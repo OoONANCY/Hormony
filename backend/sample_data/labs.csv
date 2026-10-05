@@ -1,0 +1,4 @@
+date,type,name,code,value,unit,severity,note
+2026-09-26,lab,Progesterone,P4,4.2,ng/mL,,
+2026-09-26,lab,Estradiol,E2,141,pg/mL,,
+2026-09-27,symptom,Fatigue,F,,,8,Evening crash

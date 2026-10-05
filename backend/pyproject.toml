@@ -1,0 +1,33 @@
+[project]
+name = "hormony"
+version = "0.1.0"
+description = "Hormone Insight Engine MVP"
+requires-python = ">=3.10"
+dependencies = [
+  "fastapi>=0.110",
+  "uvicorn[standard]>=0.29",
+  "sqlalchemy>=2.0",
+  "psycopg[binary]>=3.1",
+  "pydantic>=2.0",
+  "pydantic-settings>=2.0",
+  "python-multipart>=0.0.9",
+  "langgraph>=0.2",
+  "anthropic>=1.0",
+  "httpx>=0.27",
+  "python-dateutil>=2.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.23"]
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["hormony*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+markers = ["live: real LLM calls (run with: HORMONY_LIVE_TESTS=1 pytest -m live)"]
+addopts = "-m 'not live'"

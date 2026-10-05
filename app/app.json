@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "name": "Hormony",
+    "slug": "hormony",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "hormony",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F6F2EC",
+    "plugins": ["expo-router"],
+    "ios": { "supportsTablet": false },
+    "android": { "adaptiveIcon": { "backgroundColor": "#F6F2EC" } },
+    "web": { "bundler": "metro" }
+  }
+}

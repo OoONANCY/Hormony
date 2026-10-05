@@ -1,0 +1,34 @@
+from __future__ import annotations
+from datetime import date as Date, datetime as DateTime
+from typing import Optional
+from sqlalchemy import String, Float, Integer, Date, DateTime, JSON, Text, func
+from sqlalchemy.orm import Mapped, mapped_column
+from .db import Base
+
+
+class Event(Base):
+    __tablename__ = "events"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    patient_id: Mapped[str] = mapped_column(String(40), index=True)
+    date: Mapped[Date] = mapped_column(Date, index=True)
+    type: Mapped[str] = mapped_column(String(10))
+    name: Mapped[str] = mapped_column(String(80))
+    code: Mapped[Optional[str]] = mapped_column(String(10), nullable=True, default=None)
+    value: Mapped[Optional[float]] = mapped_column(Float, nullable=True, default=None)
+    unit: Mapped[Optional[str]] = mapped_column(String(20), nullable=True, default=None)
+    severity: Mapped[Optional[int]] = mapped_column(Integer, nullable=True, default=None)
+    note: Mapped[str] = mapped_column(Text, default="")
+    source: Mapped[str] = mapped_column(String(80), default="")
+    source_ref: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, default=None)
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
+
+
+class AnalysisRun(Base):
+    __tablename__ = "analysis_runs"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    patient_id: Mapped[str] = mapped_column(String(40))
+    question: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(12), default="running")
+    result: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=None)
+    event_log: Mapped[Optional[list]] = mapped_column(JSON, nullable=True, default=None)
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
