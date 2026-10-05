@@ -1,0 +1,42 @@
+# ---------- secrets & local config ----------
+.env
+.env.*
+!.env.example
+
+# ---------- private design / planning files (not published) ----------
+# Root-level prototypes and plans only. app/web/hormony-app.html is NOT ignored:
+# it is the app's UI and the app cannot build without it.
+/*.html
+/*plan*.md
+
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+*.egg-info/
+build/
+dist/
+
+# ---------- databases & backups ----------
+*.db
+*.db.bak*
+*.sqlite
+*.sqlite3
+
+# ---------- Node / Expo ----------
+node_modules/
+.expo/
+app/dist/
+app/web-build/
+# generated from app/web/hormony-app.html by `yarn build:web` (runs on install and start)
+app/src/web/hormonyHtml.ts
+*.tsbuildinfo
+npm-debug.log*
+yarn-error.log*
+
+# ---------- OS / editors ----------
+.DS_Store
+.idea/
+.vscode/

@@ -1,0 +1,1831 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#F6F2EC"/>
+<title>Hormony — Hormone Insight Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet"/>
+<style>
+@property --a{syntax:'<angle>';inherits:false;initial-value:0deg}
+:root{
+  --bg:#F6F2EC;--card:#FFFDF9;--card2:#F3EEE6;--sunk:#ECE6DC;
+  --line:rgba(30,26,34,.08);--line2:rgba(30,26,34,.15);
+  --ink:#1E1A22;--ink2:#4B4452;--muted:#7D7584;--faint:#A8A0AC;
+  --plum:#5A3D6E;--plum-d:#452E56;--plum-w:#EFE8F2;
+  /* data colours: one hue per data type, validated on #FFFDF9 for CVD separation in lane order cyc,lab,sym,slp,med */
+  --cyc:#9a6bc0;--lab:#16917f;--sym:#c4614f;--slp:#4f79b8;--med:#b08433;
+  --warn:#fab219;--good:#0ca30c;
+  /* iridescence: pearl pastels that slowly rotate (reward + delight moments only) */
+  --pearl:linear-gradient(120deg,#f7dcea 0%,#e2d9fa 24%,#d3e9f7 48%,#d9f3e7 68%,#f8edd3 86%,#f7dbe2 100%);
+  --iri:conic-gradient(from var(--a),#f2c9e2,#cdbff5,#b6dcf2,#bfead6,#f2e1b6,#f1c3cf,#f2c9e2);
+  --iri-deep:conic-gradient(from var(--a),#d98fbf,#a592e6,#7fbde2,#8fd1b3,#dcbb78,#dc93a6,#d98fbf);
+  --shadow:0 1px 2px rgba(30,26,34,.04),0 12px 32px -16px rgba(30,26,34,.16);
+  --spring:cubic-bezier(.34,1.56,.64,1);--ease:cubic-bezier(.2,.8,.2,1);
+  --serif:'Newsreader',Georgia,'Times New Roman',serif;
+  --top:50px;
+  --a:0deg;   /* fallback so pearl gradients still render where @property is unsupported */
+}
+@keyframes iri{to{--a:360deg}}
+@keyframes iriGlow{
+  0%,100%{box-shadow:-9px -5px 22px -2px rgba(236,178,214,.85),9px 5px 22px -2px rgba(160,206,238,.85),0 12px 26px -4px rgba(190,175,242,.8)}
+  33%{box-shadow:9px -7px 22px -2px rgba(176,226,202,.85),-7px 7px 22px -2px rgba(236,178,214,.85),0 12px 26px -4px rgba(238,216,166,.8)}
+  66%{box-shadow:0 -9px 22px -2px rgba(190,175,242,.85),-9px 7px 22px -2px rgba(176,226,202,.85),9px 7px 26px -4px rgba(236,178,214,.8)}}
+@keyframes iriGlowSoft{
+  0%,100%{box-shadow:-10px -6px 28px -12px rgba(236,178,214,.9),10px 6px 28px -12px rgba(160,206,238,.9),0 14px 30px -14px rgba(190,175,242,.9)}
+  50%{box-shadow:10px -6px 28px -12px rgba(176,226,202,.9),-10px 6px 28px -12px rgba(238,216,166,.9),0 14px 30px -14px rgba(236,178,214,.9)}}
+.iri{background:var(--iri);animation:iri 7s linear infinite}
+.iriCard{border:1.5px solid transparent!important;background:linear-gradient(rgba(255,253,249,.84),rgba(255,253,249,.84)) padding-box,var(--iri) border-box!important;animation:iri 12s linear infinite,iriGlowSoft 7s ease-in-out infinite}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{font-family:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;color:var(--ink);background:#E8E2D8;display:flex;align-items:center;justify-content:center;gap:64px;overflow:hidden;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;background:
+  radial-gradient(800px 600px at 12% 10%,rgba(242,201,226,.5),transparent 60%),
+  radial-gradient(800px 700px at 88% 90%,rgba(182,220,242,.5),transparent 60%),
+  radial-gradient(600px 500px at 75% 12%,rgba(242,225,182,.4),transparent 60%)}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+input,textarea,select{font:inherit;color:inherit}
+.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--plum);outline-offset:2px}
+
+/* ---------- phone frame ---------- */
+.phone{position:relative;width:100vw;height:100vh;height:100dvh;overflow:hidden;isolation:isolate;background:var(--bg)}
+@media(max-width:519px){:root{--top:max(14px,env(safe-area-inset-top))}.statusbar{display:none!important}}
+@media(min-width:520px){.phone{width:390px;height:844px;max-height:calc(100vh - 32px);border-radius:52px;
+  box-shadow:0 0 0 10px #1E1A22,0 0 0 11px rgba(30,26,34,.25),0 50px 110px -20px rgba(30,26,34,.45),-30px -20px 90px -30px rgba(236,178,214,.7),30px 30px 90px -30px rgba(160,206,238,.7)}}
+.orb{position:absolute;border-radius:50%;filter:blur(60px);pointer-events:none;z-index:-1;animation:drift 18s ease-in-out infinite alternate}
+.orb.o1{width:260px;height:260px;background:#f2c9e2;top:-110px;right:-120px;opacity:.55}
+.orb.o2{width:240px;height:240px;background:#cdbff5;top:340px;left:-160px;opacity:.38;animation-duration:23s}
+.orb.o3{width:220px;height:220px;background:#bfead6;bottom:-80px;right:-80px;opacity:.45;animation-duration:27s}
+@keyframes drift{to{transform:translate(40px,60px) scale(1.15)}}
+.statusbar{position:absolute;top:0;left:0;right:0;height:50px;display:flex;align-items:center;justify-content:space-between;padding:8px 34px 0;font-size:15px;font-weight:600;z-index:60;pointer-events:none}
+.statusbar svg{height:12px;fill:var(--ink)}
+
+/* ---------- screens & type ---------- */
+.screen{position:absolute;inset:0;padding:calc(var(--top) + 8px) 18px 130px;overflow-y:auto;overflow-x:hidden;opacity:0;visibility:hidden;
+  transform:translateY(16px) scale(.985);transition:opacity .35s var(--ease),transform .5s var(--ease),visibility 0s .35s;scrollbar-width:none}
+.screen::-webkit-scrollbar{display:none}
+.screen.on{opacity:1;visibility:visible;transform:none;transition:opacity .35s var(--ease),transform .5s var(--ease),visibility 0s}
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 18px}
+.eyebrow{font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;color:var(--muted)}
+.h1{font-family:var(--serif);font-size:33px;line-height:1.06;font-weight:400;letter-spacing:-.015em;margin:6px 0 0}
+.h2{font-family:var(--serif);font-size:23px;font-weight:400;letter-spacing:-.01em;line-height:1.2;margin:0}
+.h3{font-size:15.5px;font-weight:600;margin:0;letter-spacing:-.005em}
+.h1 em,.h2 em,.big em{font-style:italic;color:var(--plum)}
+.p{font-size:15px;line-height:1.55;color:var(--ink2);margin:0}
+.small{font-size:13px;color:var(--muted);line-height:1.45}
+.row{display:flex;align-items:center;gap:10px}
+.between{justify-content:space-between}
+.mt8{margin-top:8px}.mt12{margin-top:12px}.mt16{margin-top:16px}
+.secTitle{display:flex;align-items:center;justify-content:space-between;margin:24px 2px 10px}
+.backBtn{width:40px;height:40px;border-radius:13px;background:var(--card);border:1px solid var(--line);display:grid;place-items:center;transition:transform .25s var(--spring);box-shadow:0 1px 2px rgba(30,26,34,.04);color:var(--ink)}
+.backBtn:active{transform:scale(.9)}
+.backBtn .i{width:18px;height:18px}
+
+/* ---------- cards & buttons ---------- */
+.card{position:relative;border-radius:22px;background:var(--card);border:1px solid var(--line);padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
+.tap{cursor:pointer;transition:transform .3s var(--spring),border-color .2s,box-shadow .3s}
+.tap:active{transform:scale(.975)}
+.tap:hover{border-color:var(--line2)}
+.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 20px;border-radius:14px;font-size:15px;font-weight:500;letter-spacing:-.005em;transition:transform .3s var(--spring),opacity .2s;user-select:none;white-space:nowrap}
+.btn:active{transform:scale(.95)}
+.btn.primary{background:var(--plum);color:#fff;animation:iriGlowSoft 6s ease-in-out infinite}
+.btn.ghost{background:var(--card);border:1px solid var(--line2);color:var(--ink)}
+.btn.gold{background:var(--iri);color:var(--plum-d);font-weight:600;animation:iri 6s linear infinite,iriGlow 5s ease-in-out infinite}
+.btn.gold::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(180deg,rgba(255,255,255,.6),rgba(255,255,255,0) 60%);pointer-events:none}
+.btn.block{width:100%}
+.btn.sm{height:38px;padding:0 14px;border-radius:12px;font-size:13.5px}
+.btn .i{width:18px;height:18px}
+.btn[disabled]{opacity:.4;pointer-events:none;animation:none}
+.pill{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 10px;border-radius:99px;font-size:12px;font-weight:500;background:var(--card2);border:1px solid var(--line);color:var(--ink2);white-space:nowrap}
+.pill.pearl{background:var(--pearl);color:var(--plum-d);border-color:rgba(255,255,255,.8);font-weight:600}
+.pill .sw,.chip .sw{width:8px;height:8px;border-radius:50%;flex:none}
+.xpTag{font-size:12px;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--pearl);color:var(--plum-d);border:1px solid rgba(255,255,255,.9);white-space:nowrap;box-shadow:0 2px 8px -3px rgba(190,175,242,.8)}
+.bub{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;color:#fff;flex:none}
+.bub .i{width:18px;height:18px}
+
+/* ---------- top of Today ---------- */
+.streak{display:inline-flex;align-items:center;gap:5px;height:38px;padding:0 13px 0 9px;border-radius:99px;background:var(--pearl);border:1px solid rgba(255,255,255,.9);font-weight:600;font-size:15px;color:var(--plum-d);animation:iriGlowSoft 7s ease-in-out infinite}
+.streak.pop{animation:bump .6s var(--spring),iriGlowSoft 7s ease-in-out infinite}
+.streak svg{width:20px;height:20px}
+.avatarBtn{position:relative;width:46px;height:46px;display:grid;place-items:center;flex:none}
+.avatarBtn .face{width:36px;height:36px;border-radius:50%;background:var(--iri);animation:iri 8s linear infinite;display:grid;place-items:center;font-family:var(--serif);font-size:17px;color:var(--plum-d)}
+.avatarBtn svg.lvl{position:absolute;inset:0;width:46px;height:46px;transform:rotate(-90deg)}
+.lvlBadge{position:absolute;bottom:-4px;right:-5px;min-width:20px;height:20px;border-radius:10px;background:var(--plum);color:#fff;font-size:10.5px;font-weight:700;display:grid;place-items:center;border:2px solid var(--bg)}
+
+/* ---------- cycle ring ---------- */
+.ringCard{padding:14px 12px 16px;background:radial-gradient(55% 45% at 50% 46%,rgba(226,217,250,.55),transparent 72%),var(--card)}
+.ringWrap{position:relative;width:300px;max-width:100%;aspect-ratio:1;margin:0 auto;touch-action:none;cursor:grab}
+.ringWrap:active{cursor:grabbing}
+.ringWrap svg{width:100%;height:100%;overflow:visible;display:block}
+.ringCenter{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;pointer-events:none}
+.ringCenter .eyebrow{font-size:10.5px}
+.ringDay{font-size:58px;font-weight:300;line-height:1;letter-spacing:-.04em;margin-top:2px}
+.ringPhase{font-family:var(--serif);font-style:italic;font-size:18px;color:var(--plum);margin-top:4px}
+.ringSub{font-size:12px;color:var(--muted);margin-top:4px;max-width:130px;line-height:1.3}
+.ringCenter.swap>*{animation:fadeUp .3s var(--ease) both}
+.legend{display:flex;justify-content:center;flex-wrap:wrap;gap:6px 14px;margin-top:6px;font-size:12px;color:var(--ink2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.legend i.bar{width:14px;height:4px;border-radius:2px}
+.legend i.pearlDot{width:10px;height:10px;background:var(--iri);animation:iri 5s linear infinite;box-shadow:0 0 0 1.5px var(--plum)}
+.hint{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--muted);margin-top:8px;transition:opacity .4s}
+.hint .i{width:14px;height:14px}
+.todayOrb{animation:orbPulse 2.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+@keyframes orbPulse{50%{transform:scale(1.3);opacity:.7}}
+@keyframes segIn{from{opacity:0}}
+
+/* ---------- unlock card ---------- */
+.unlock{overflow:hidden}
+.lockBadge{width:44px;height:44px;border-radius:15px;display:grid;place-items:center;background:var(--iri);animation:iri 6s linear infinite;color:var(--plum-d);flex:none;transition:transform .5s var(--spring)}
+.unlock.open .lockBadge{transform:rotate(-8deg) scale(1.08);animation:iri 4s linear infinite,iriGlow 4s ease-in-out infinite}
+.evPct{font-size:22px;font-weight:300;letter-spacing:-.02em}
+.blurText{font-family:var(--serif);font-size:21px;line-height:1.28;margin:14px 0 14px;filter:blur(7px);user-select:none;transition:filter 1.1s var(--ease)}
+.unlock.open .blurText{filter:none;user-select:auto}
+.meter{height:10px;border-radius:99px;background:var(--sunk);overflow:hidden;position:relative}
+.meter>i{display:block;height:100%;border-radius:99px;background:var(--iri-deep);animation:iri 5s linear infinite;transition:width 1.1s var(--spring);position:relative;overflow:hidden}
+.meter>i::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.7),transparent);animation:shine 2.4s infinite;transform:translateX(-100%)}
+@keyframes shine{to{transform:translateX(100%)}}
+.need{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.need span{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:500;padding:7px 11px;border-radius:12px;background:var(--card);border:1px solid var(--line2);transition:all .4s var(--spring)}
+.need span.done{background:var(--pearl);border-color:rgba(255,255,255,.9);color:var(--plum-d)}
+.need .i{width:15px;height:15px}
+
+/* ---------- check-in ---------- */
+.energy{display:flex;align-items:center;gap:14px;margin-top:14px}
+.face{font-size:28px;width:56px;height:56px;display:grid;place-items:center;border-radius:50%;background:var(--pearl);border:1px solid rgba(255,255,255,.9);flex:none;box-shadow:0 6px 16px -8px rgba(190,175,242,.9)}
+.face.bump{animation:bump .45s var(--spring)}
+@keyframes bump{40%{transform:scale(1.2) rotate(-6deg)}}
+.bumpA{animation:bump .45s var(--spring)}
+.slider{-webkit-appearance:none;appearance:none;width:100%;height:8px;border-radius:99px;outline:0;background:linear-gradient(90deg,#a9cfee,#bfb2f0,#eab8d6,#ebd5a4)}
+.slider::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;border:1px solid var(--line2);box-shadow:0 3px 10px rgba(30,26,34,.18);cursor:grab;transition:transform .25s var(--spring)}
+.slider:active::-webkit-slider-thumb{transform:scale(1.2)}
+.slider::-moz-range-thumb{width:26px;height:26px;border:1px solid var(--line2);border-radius:50%;background:#fff;box-shadow:0 3px 10px rgba(30,26,34,.18)}
+.eLabel{font-size:15px;font-weight:500;margin-bottom:10px;display:flex;justify-content:space-between;align-items:baseline}
+.eLabel span{color:var(--muted);font-weight:400;font-size:13px}
+.stepper{display:flex;align-items:center;gap:12px;margin-top:10px}
+.stepBtn{width:44px;height:44px;border-radius:14px;background:var(--card2);border:1px solid var(--line);font-size:22px;font-weight:300;display:grid;place-items:center;transition:transform .25s var(--spring)}
+.stepBtn:active{transform:scale(.88)}
+.stepVal{flex:1;text-align:center;font-size:28px;font-weight:300;letter-spacing:-.02em}
+.stepVal small{display:block;font-family:var(--serif);font-style:italic;font-size:14px;color:var(--plum);font-weight:400;letter-spacing:0}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{display:inline-flex;align-items:center;gap:7px;height:36px;padding:0 14px;border-radius:99px;background:var(--card);border:1px solid var(--line2);font-size:13.5px;font-weight:500;color:var(--ink2);transition:transform .3s var(--spring),background .2s,border-color .2s,color .2s,opacity .2s;flex:none}
+.chip:active{transform:scale(.92)}
+.chip.on{background:rgba(196,97,79,.1);border-color:rgba(196,97,79,.45);color:var(--ink)}
+.chip.sel{background:var(--plum-w);border-color:rgba(90,61,110,.4);color:var(--plum-d)}
+.chip.off{opacity:.5}
+.divider{height:1px;background:var(--line);margin:18px 0}
+.done{animation:pop .5s var(--spring) both}
+
+/* ---------- quest & stats ---------- */
+.qItem{display:grid;grid-template-columns:28px 1fr auto;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line)}
+.qItem:last-child{border:0;padding-bottom:0}
+.qCheck{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--line2);display:grid;place-items:center;transition:all .45s var(--spring)}
+.qCheck .i{width:14px;height:14px;opacity:0;transition:opacity .2s}
+.qItem.ok .qCheck{background:var(--iri);animation:iri 6s linear infinite;border-color:transparent;transform:scale(1.08);box-shadow:0 4px 12px -4px rgba(190,175,242,.9)}
+.qItem.ok .qCheck .i{opacity:1;color:var(--plum-d);stroke-width:2.2}
+.qItem.ok .qText{color:var(--muted);text-decoration:line-through;text-decoration-color:rgba(30,26,34,.25)}
+.qText{font-size:14.5px;font-weight:500}
+.dots{display:flex;gap:5px}
+.dots i{width:20px;height:5px;border-radius:99px;background:var(--sunk);transition:background .4s}
+.dots i.on{background:var(--iri-deep);animation:iri 5s linear infinite}
+.stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.stat{padding:14px 12px;border-radius:18px;background:var(--card);border:1px solid var(--line);box-shadow:var(--shadow)}
+.stat b{display:block;font-size:26px;font-weight:300;letter-spacing:-.03em}
+.stat span{font-size:12px;color:var(--muted)}
+
+/* ---------- timeline ---------- */
+.filters{display:flex;gap:8px;overflow-x:auto;margin:0 -18px 12px;padding:2px 18px;scrollbar-width:none}
+.filters::-webkit-scrollbar{display:none}
+.seg2{display:inline-flex;padding:3px;border-radius:12px;background:var(--sunk);flex:none}
+.seg2 button{height:30px;padding:0 12px;border-radius:9px;font-size:13px;font-weight:500;color:var(--muted);transition:all .3s var(--spring)}
+.seg2 button.on{background:var(--card);color:var(--plum-d);box-shadow:0 1px 3px rgba(30,26,34,.12)}
+.laneBox{display:grid;grid-template-columns:38px 1fr}
+.laneLabels{position:relative}
+.laneLabel{position:absolute;left:0;width:30px;display:grid;place-items:center}
+.laneLabel span{width:26px;height:26px;border-radius:9px;display:grid;place-items:center;color:#fff}
+.laneLabel .i{width:14px;height:14px}
+.laneScroll{min-width:0;overflow-x:auto;scrollbar-width:none;padding-right:18px;cursor:crosshair}
+.laneScroll::-webkit-scrollbar{display:none}
+.laneScroll svg{display:block}
+.axisTxt{fill:var(--muted);font-size:10.5px;font-family:inherit}
+.lblTxt{fill:var(--ink2);font-size:10.5px;font-weight:600;font-family:inherit}
+.readout{margin-top:12px;padding:12px 14px;border-radius:16px;background:var(--card2);min-height:84px}
+.roHead{font-size:13.5px;color:var(--ink2)}
+.roHead b{color:var(--ink);font-size:14.5px;font-weight:600}
+.roItems{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.roItem{display:inline-flex;align-items:center;gap:7px;padding:5px 10px 5px 5px;border-radius:11px;background:var(--card);border:1px solid var(--line);font-size:12.5px;font-weight:500;transition:transform .25s var(--spring)}
+.roItem:active{transform:scale(.94)}
+.roItem .d{width:20px;height:20px;border-radius:7px;display:grid;place-items:center;color:#fff}
+.roItem .d .i{width:12px;height:12px}
+.mini{margin-top:16px}
+.mini:first-child{margin-top:0}
+.mini .top{display:flex;justify-content:space-between;align-items:baseline}
+.mini .val{font-size:20px;font-weight:300;letter-spacing:-.02em}
+.mini .val small{font-size:12.5px;color:var(--muted);font-weight:400;margin-left:3px}
+.mini svg{width:100%;height:auto;display:block;margin-top:4px}
+.mini .ro{font-size:12.5px;color:var(--ink2);margin-top:2px;min-height:18px}
+table.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{text-align:left;font-weight:600;color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:6px 4px;border-bottom:1px solid var(--line2)}
+.tbl td{padding:9px 4px;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+.feedItem{display:grid;grid-template-columns:36px 1fr 18px;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);cursor:pointer;animation:fadeUp .4s var(--ease) both}
+.feedItem:last-child{border:0}
+.feedItem .t{font-size:14.5px;font-weight:500}
+.feedItem .m{font-size:12.5px;color:var(--muted);margin-top:2px}
+
+/* ---------- nav ---------- */
+.nav{position:absolute;left:14px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom));height:68px;border-radius:24px;background:rgba(255,253,249,.86);backdrop-filter:blur(22px) saturate(1.3);-webkit-backdrop-filter:blur(22px) saturate(1.3);border:1px solid var(--line);display:grid;grid-template-columns:repeat(5,1fr);align-items:center;z-index:50;box-shadow:0 12px 36px -12px rgba(30,26,34,.28);transition:transform .5s var(--spring),opacity .3s}
+.nav.hide{transform:translateY(140%);opacity:0;pointer-events:none}
+.navBtn{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10.5px;font-weight:500;color:var(--faint);transition:color .2s;height:100%;justify-content:center}
+.navBtn .i{width:21px;height:21px;transition:transform .4s var(--spring)}
+.navBtn.on{color:var(--plum)}
+.navBtn.on .i{transform:translateY(-2px) scale(1.06)}
+.navBtn .dot{width:5px;height:5px;border-radius:50%;background:transparent;margin-top:-1px}
+.navBtn.on .dot{background:var(--iri-deep);animation:iri 4s linear infinite}
+.askOrb{justify-self:center;width:60px;height:60px;margin-top:-34px;border-radius:50%;background:var(--iri);display:grid;place-items:center;color:var(--plum-d);position:relative;transition:transform .35s var(--spring);animation:iri 6s linear infinite,iriGlow 5s ease-in-out infinite;border:3px solid var(--bg)}
+.askOrb::after{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 32% 26%,rgba(255,255,255,.95),rgba(255,255,255,0) 45%);pointer-events:none}
+.askOrb::before{content:"";position:absolute;inset:-10px;border-radius:50%;border:1.5px solid rgba(165,146,230,.55);animation:ping 2.6s var(--ease) infinite}
+@keyframes ping{0%{transform:scale(.85);opacity:.9}100%{transform:scale(1.35);opacity:0}}
+.askOrb:active{transform:scale(.88)}
+.askOrb .i{width:24px;height:24px;position:relative;z-index:1;stroke-width:1.8}
+
+/* ---------- sheet / overlays ---------- */
+.scrim{position:absolute;inset:0;background:rgba(30,26,34,.28);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);opacity:0;visibility:hidden;transition:opacity .3s,visibility 0s .3s;z-index:80}
+.scrim.on{opacity:1;visibility:visible;transition:opacity .3s}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:90%;overflow-y:auto;scrollbar-width:none;background:var(--card);border-radius:28px 28px 0 0;padding:10px 20px calc(26px + env(safe-area-inset-bottom));transform:translateY(110%);transition:transform .55s var(--spring);z-index:81;box-shadow:0 -20px 60px -20px rgba(30,26,34,.35)}
+.sheet::-webkit-scrollbar{display:none}
+.sheet.on{transform:none}
+.grab{width:40px;height:4px;border-radius:99px;background:var(--sunk);margin:0 auto 16px}
+.sheetBody{animation:fadeUp .35s var(--ease) both}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}
+.tile{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 6px 14px;border-radius:18px;background:var(--card2);border:1px solid var(--line);font-size:13.5px;font-weight:500;transition:transform .3s var(--spring),background .2s}
+.tile:active{transform:scale(.92)}
+.tile:hover{background:var(--sunk)}
+.tile .bub{width:42px;height:42px;border-radius:14px}
+.tile .bub.iri{color:var(--plum-d)}
+.tile .bub .i{width:20px;height:20px}
+.tile small{font-size:11px;color:var(--muted);font-weight:400;margin-top:-4px}
+.field{margin-top:14px}
+.field label{display:block;font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:600;color:var(--muted);margin-bottom:8px}
+.inp{width:100%;height:50px;border-radius:14px;border:1px solid var(--line2);background:var(--card);padding:0 16px;font-size:16px;outline:0;transition:border-color .2s,box-shadow .2s}
+.inp:focus,.askBox:focus{border-color:rgba(90,61,110,.5);box-shadow:0 0 0 4px rgba(90,61,110,.1)}
+.askBox{width:100%;min-height:96px;border-radius:18px;border:1px solid var(--line2);background:var(--card2);padding:14px 16px;font-family:var(--serif);font-size:19px;line-height:1.4;outline:0;resize:none;margin-top:16px}
+.toast{position:absolute;top:calc(var(--top) + 6px);left:50%;transform:translate(-50%,-40px) scale(.9);opacity:0;z-index:170;padding:11px 18px;border-radius:99px;background:var(--ink);color:#fff;font-size:14px;font-weight:500;display:flex;align-items:center;gap:8px;box-shadow:0 12px 30px -8px rgba(30,26,34,.45);transition:all .5s var(--spring);pointer-events:none;white-space:nowrap}
+.toast.on{opacity:1;transform:translate(-50%,0) scale(1)}
+.toast .i{width:17px;height:17px;color:#cdbff5}
+.xpFloat{position:absolute;z-index:175;font-weight:700;font-size:15px;color:var(--plum-d);padding:7px 14px;border-radius:99px;background:var(--iri);border:1px solid rgba(255,255,255,.9);pointer-events:none;animation:xpUp 1.5s var(--ease) forwards,iri 3s linear infinite,iriGlow 1.5s ease-in-out infinite;white-space:nowrap}
+@keyframes xpUp{0%{opacity:0;transform:translate(-50%,10px) scale(.6)}18%{opacity:1;transform:translate(-50%,-12px) scale(1.12)}100%{opacity:0;transform:translate(-50%,-100px) scale(1)}}
+.fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:180}
+
+/* ---------- debate ---------- */
+.steps{display:flex;gap:6px;margin:14px 0 6px}
+.steps span{flex:1;height:4px;border-radius:99px;background:var(--sunk);position:relative;overflow:hidden}
+.steps span.on::after{content:"";position:absolute;inset:0;background:var(--iri-deep);animation:fillIn .7s var(--ease) both,iri 4s linear infinite}
+@keyframes fillIn{from{transform:translateX(-100%)}}
+.stepLbl{font-size:13px;color:var(--ink2);font-weight:500;min-height:20px;margin-bottom:14px}
+.qCard .q{font-family:var(--serif);font-size:25px;line-height:1.22;margin-top:6px}
+.ledger{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:14px}
+.ledger div{text-align:center;padding:10px 2px;border-radius:13px;background:var(--card2)}
+.ledger b{display:block;font-size:20px;font-weight:300}
+.ledger span{display:flex;align-items:center;justify-content:center;gap:4px;font-size:10.5px;color:var(--muted)}
+.ledger span i{width:6px;height:6px;border-radius:50%}
+.agent{opacity:.45;transform:translateY(10px);transition:opacity .5s,transform .6s var(--spring),border-color .4s,box-shadow .4s}
+.agent.live,.agent.done{opacity:1;transform:none}
+.agent.live{border-color:var(--line2);box-shadow:0 14px 36px -18px var(--c)}
+.aTop{display:flex;gap:12px;align-items:center}
+.av{position:relative;width:44px;height:44px;border-radius:15px;display:grid;place-items:center;color:#fff;flex:none;background:var(--c)}
+.av::after{content:"";position:absolute;inset:-5px;border-radius:19px;border:1.5px solid var(--c);opacity:0}
+.agent.live .av::after{animation:think 1.1s ease-in-out infinite}
+@keyframes think{0%,100%{opacity:.15;transform:scale(.95)}50%{opacity:.8;transform:scale(1.07)}}
+.aName{font-size:15.5px;font-weight:600}
+.aRole{font-size:12.5px;color:var(--muted)}
+.aState{margin-left:auto;font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--faint)}
+.agent.live .aState{color:var(--plum)}
+.agent.done .aState{color:var(--ink2)}
+.thoughts{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.thought{font-size:13.5px;color:var(--ink2);display:flex;gap:9px;align-items:flex-start;line-height:1.45;animation:fadeUp .3s var(--ease) both}
+.thought::before{content:"";flex:none;width:5px;height:5px;border-radius:50%;margin-top:7px;background:var(--c)}
+.caret::after{content:"▍";animation:blink .8s steps(1) infinite;margin-left:1px;color:var(--plum)}
+@keyframes blink{50%{opacity:0}}
+.hyp{margin-top:14px;padding:14px;border-radius:16px;background:var(--card2);animation:pop .55s var(--spring) both}
+.hyp .lbl{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.hyp p{margin:6px 0 12px;font-family:var(--serif);font-size:17px;line-height:1.4}
+.conf{display:flex;align-items:center;gap:10px}
+.conf .bar{flex:1;height:6px;border-radius:99px;background:var(--sunk);overflow:hidden}
+.conf .bar i{display:block;height:100%;width:0;border-radius:99px;background:var(--c);transition:width 1.2s var(--ease)}
+.conf b{font-size:14px;font-weight:500;min-width:40px;text-align:right;font-variant-numeric:tabular-nums}
+.evChips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.evChip{font-size:11.5px;font-weight:500;padding:5px 9px;border-radius:9px;background:var(--card);border:1px solid var(--line2);color:var(--ink2);display:inline-flex;align-items:center;gap:6px;transition:transform .25s var(--spring),background .2s;font-family:ui-monospace,'SF Mono',Menlo,monospace}
+.evChip:active{transform:scale(.92)}
+.evChip:hover{background:var(--card2)}
+.evChip .sw{width:7px;height:7px;border-radius:50%}
+.disc{border-color:rgba(250,178,25,.55);background:linear-gradient(180deg,rgba(250,178,25,.09),rgba(250,178,25,.02)),var(--card);animation:shake .7s cubic-bezier(.36,.07,.19,.97) both}
+@keyframes shake{10%,90%{transform:translateX(-1px)}20%,80%{transform:translateX(3px)}30%,50%,70%{transform:translateX(-7px)}40%,60%{transform:translateX(7px)}}
+.discHead{display:flex;align-items:center;gap:8px;color:#7a5200;font-weight:700;font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.discHead .i{width:18px;height:18px}
+.tri{margin:6px 0 2px}
+.tri svg{width:100%;height:auto;display:block}
+.zigPulse{animation:zp 1.1s ease-in-out infinite}
+@keyframes zp{50%{opacity:.45}}
+.pair{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;padding:10px 0;border-top:1px solid var(--line);font-size:13.5px;line-height:1.45}
+.tag{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:4px 8px;border-radius:7px;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.tag.ok{background:rgba(12,163,12,.1);color:#1d5e25}
+.tag.no{background:rgba(250,178,25,.2);color:#6e4a00}
+.tag.all{background:var(--plum-w);color:var(--plum-d)}
+.msg{display:grid;grid-template-columns:34px 1fr;gap:10px;margin-bottom:12px;animation:pop .45s var(--spring) both}
+.msg .av{width:34px;height:34px;border-radius:12px}
+.msg .av::after{display:none}
+.bubble{background:var(--card);border:1px solid var(--line);border-radius:5px 18px 18px 18px;padding:10px 14px;font-size:14.5px;line-height:1.5;box-shadow:0 1px 2px rgba(30,26,34,.04)}
+.bubble .who{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:3px}
+.typing{display:inline-flex;gap:4px;padding:6px 2px}
+.typing i{width:6px;height:6px;border-radius:50%;background:var(--faint);animation:dots 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes dots{0%,60%,100%{opacity:.3;transform:none}30%{opacity:1;transform:translateY(-3px)}}
+.verdict{animation:pop .6s var(--spring) both}
+.verdict.iriCard{animation:pop .6s var(--spring) both,iri 12s linear infinite,iriGlowSoft 7s ease-in-out infinite}
+.critic{background:var(--iri)!important;color:var(--plum-d)!important;animation:iri 5s linear infinite,iriGlow 5s ease-in-out infinite}
+.adj{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.adj .d{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;color:#fff}
+.adj .d .i{width:14px;height:14px}
+.adj .n{font-size:14px;font-weight:600}
+.adj .w{font-size:12.5px;color:var(--muted)}
+.adj .v{font-size:14.5px;font-weight:500;font-variant-numeric:tabular-nums}
+.adj .v .up{color:#1d5e25}.adj .v .dn{color:#8a3f24}
+.adj .was{font-size:12px;color:var(--faint);text-decoration:line-through;margin-right:5px}
+.skip{height:38px;padding:0 14px;border-radius:12px;background:var(--card);border:1px solid var(--line2);font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.list{margin:8px 0 0;padding:0;list-style:none}
+.list li{display:flex;gap:10px;padding:7px 0;font-size:14px;line-height:1.5;color:var(--ink2)}
+.list li::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--plum);margin-top:9px;flex:none}
+.list .evChip{padding:3px 8px;font-size:11px;margin-left:6px;height:max-content}
+
+/* ---------- insight ---------- */
+.ihero{padding:22px;overflow:hidden}
+.big{font-family:var(--serif);font-size:28px;line-height:1.18;font-weight:400;letter-spacing:-.012em;margin:12px 0 18px}
+.confRing{display:flex;align-items:center;gap:14px}
+.confRing svg{width:76px;height:76px;flex:none;transform:rotate(-90deg)}
+.confRing .lbl{font-size:13px;color:var(--muted);line-height:1.4}
+.confRing b{font-size:15.5px;font-weight:600;display:block;margin-bottom:2px}
+.chain{position:relative;padding-left:36px;margin-top:6px}
+.chain::before{content:"";position:absolute;left:13px;top:10px;bottom:10px;width:1.5px;background:linear-gradient(var(--cyc),var(--lab),var(--sym),var(--slp),var(--med));opacity:.6}
+.link{position:relative;padding:4px 0 16px;opacity:0;transform:translateX(-10px);transition:opacity .5s,transform .6s var(--spring)}
+.link.on{opacity:1;transform:none}
+.link .num{position:absolute;left:-36px;top:2px;width:28px;height:28px;border-radius:50%;background:var(--card);border:1.5px solid var(--line2);font-size:12px;font-weight:600;display:grid;place-items:center;transition:all .4s}
+.link.on .num{background:var(--iri);border-color:transparent;color:var(--plum-d);animation:iri 6s linear infinite;box-shadow:0 4px 12px -4px rgba(190,175,242,.9)}
+.link h4{margin:0 0 6px;font-family:var(--serif);font-size:18px;font-weight:400}
+.srcRow{display:flex;flex-wrap:wrap;gap:6px}
+.whyBtn{overflow:hidden}
+.whyBtn::after{content:"";position:absolute;inset:0;border-radius:inherit;background:linear-gradient(90deg,transparent,rgba(255,255,255,.28),transparent);transform:translateX(-100%);animation:shine 2.8s infinite}
+.expCard{background:linear-gradient(135deg,rgba(22,145,127,.07),rgba(79,121,184,.07)),var(--card)}
+
+/* ---------- insights list ---------- */
+.iCard{overflow:hidden}
+.iCard.locked .ttl{filter:blur(5px);user-select:none}
+.iCard .ttl{font-family:var(--serif);font-size:19px;line-height:1.3;margin:10px 0 12px}
+.toolCard{display:grid;grid-template-columns:44px 1fr 20px;gap:14px;align-items:center}
+.toolCard .bub{width:44px;height:44px;border-radius:15px;background:var(--iri);animation:iri 7s linear infinite;color:var(--plum-d)}
+.toolCard>span .i{color:var(--faint)}
+
+/* ---------- graph ---------- */
+.graphCard{padding:8px;overflow:hidden;background:radial-gradient(50% 40% at 50% 50%,rgba(226,217,250,.5),transparent 75%),var(--card)}
+.graphCard svg{width:100%;height:auto;display:block;touch-action:none;user-select:none;-webkit-user-select:none}
+.gNode{cursor:grab}
+.gNode:active{cursor:grabbing}
+.gNode text{font-family:inherit;pointer-events:none}
+.gEdge{cursor:pointer}
+.relCard .h3{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.kv div{padding:11px 12px;border-radius:13px;background:var(--card2)}
+.kv span{display:block;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.kv b{display:block;font-size:14px;font-weight:500;margin-top:3px;line-height:1.35}
+.note{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:14px;background:var(--card2);font-size:13px;color:var(--ink2);line-height:1.5;margin-bottom:12px}
+.note .i{width:17px;height:17px;margin-top:1px;color:var(--plum)}
+
+/* ---------- brief ---------- */
+.paper{background:#fff;color:var(--ink);border-radius:18px;padding:22px 20px;border:1px solid var(--line);box-shadow:0 30px 60px -34px rgba(30,26,34,.35);animation:pop .6s var(--spring) both}
+.paper .ph{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;border-bottom:1.5px solid var(--ink);padding-bottom:12px}
+.paper .pt{font-family:var(--serif);font-size:23px;font-weight:400;letter-spacing:-.01em;line-height:1.15}
+.paper .pm{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.45}
+.paper .logoMini{width:32px;height:32px;border-radius:50%;background:var(--iri);animation:iri 8s linear infinite;flex:none}
+.paper h5{font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:18px 0 8px;font-weight:600}
+.paper .obs{display:grid;grid-template-columns:22px 1fr;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13.5px;line-height:1.5}
+.paper .obs:last-child{border:0}
+.paper .obs .n{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;font-size:11.5px;font-weight:700;color:#fff}
+.paper .interp{padding:12px 14px;border-radius:12px;background:var(--card2);font-family:var(--serif);font-size:15.5px;line-height:1.5}
+.paper .qq{display:flex;gap:10px;align-items:flex-start;padding:8px 0;font-size:13.5px;line-height:1.5;cursor:pointer}
+.paper .box{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--faint);flex:none;display:grid;place-items:center;transition:all .3s var(--spring);margin-top:1px}
+.paper .box .i{width:13px;height:13px;color:#fff;opacity:0;stroke-width:2.2}
+.paper .qq.on .box{background:var(--plum);border-color:var(--plum)}
+.paper .qq.on .box .i{opacity:1}
+.paper .qq:not(.on){color:var(--faint)}
+.paper .foot{margin-top:16px;padding-top:12px;border-top:1px solid var(--line);font-size:11.5px;color:var(--muted);line-height:1.5}
+
+/* ---------- me ---------- */
+.prof{display:flex;align-items:center;gap:16px}
+.bigAv{position:relative;width:84px;height:84px;flex:none}
+.bigAv svg{position:absolute;inset:0;width:84px;height:84px;transform:rotate(-90deg)}
+.bigAv .face{position:absolute;inset:9px;width:auto;height:auto;border-radius:50%;background:var(--iri);animation:iri 8s linear infinite;display:grid;place-items:center;font-family:var(--serif);font-size:30px;color:var(--plum-d);border:0;box-shadow:none}
+.badges{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 8px}
+.badge{display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;font-size:11px;color:var(--ink2);font-weight:500;line-height:1.25}
+.badge .b{position:relative;width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:var(--iri);animation:iri 7s linear infinite,iriGlowSoft 6s ease-in-out infinite;color:var(--plum-d);border:1px solid rgba(255,255,255,.9)}
+.badge .b::after{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 32% 26%,rgba(255,255,255,.9),rgba(255,255,255,0) 45%)}
+.badge .b .i{width:22px;height:22px;stroke-width:1.5;position:relative;z-index:1}
+.badge.locked{color:var(--faint)}
+.badge.locked .b{background:var(--card2);border:1.5px dashed var(--line2);color:var(--faint);animation:none;box-shadow:none}
+.badge.locked .b::after{display:none}
+.badge.fresh .b{animation:badgeIn 1s var(--spring),iri 7s linear infinite,iriGlow 3s ease-in-out infinite}
+@keyframes badgeIn{0%{transform:scale(.3) rotate(-30deg)}100%{transform:none}}
+.setRow{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.setRow:last-child{border:0;padding-bottom:0}
+.setRow .t{font-size:14.5px;font-weight:500}
+.setRow .s{font-size:12.5px;color:var(--muted);margin-top:1px}
+.synced{margin-left:auto;display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.synced::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--good)}
+.tog{width:48px;height:28px;border-radius:99px;background:var(--sunk);padding:3px;transition:background .3s;flex:none;margin-left:auto}
+.tog i{display:block;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .45s var(--spring);box-shadow:0 1px 4px rgba(30,26,34,.25)}
+.tog.on{background:var(--c)}
+.tog.on i{transform:translateX(20px)}
+.xpBar{height:8px;border-radius:99px;background:var(--sunk);overflow:hidden;margin-top:8px}
+.xpBar i{display:block;height:100%;background:var(--iri-deep);animation:iri 5s linear infinite;border-radius:99px;transition:width 1s var(--spring)}
+.pearlCard{background:linear-gradient(rgba(255,253,249,.8),rgba(255,253,249,.8)),var(--pearl)}
+
+/* ---------- level up / splash ---------- */
+.levelup{position:absolute;inset:0;z-index:160;display:grid;place-items:center;background:rgba(246,242,236,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);opacity:0;visibility:hidden;transition:opacity .4s,visibility 0s .4s}
+.levelup.on{opacity:1;visibility:visible;transition:opacity .4s}
+.lvCard{text-align:center;padding:30px;transform:scale(.6);transition:transform .8s var(--spring)}
+.levelup.on .lvCard{transform:none}
+.lvOrb{width:150px;height:150px;margin:0 auto 26px;border-radius:50%;background:var(--iri);display:grid;place-items:center;font-family:var(--serif);font-size:68px;color:var(--plum-d);position:relative;animation:iri 4s linear infinite,iriGlow 3s ease-in-out infinite}
+.lvOrb::before{content:"";position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 32% 24%,rgba(255,255,255,.95),rgba(255,255,255,0) 42%)}
+.lvOrb span{position:relative}
+.lvOrb::after{content:"";position:absolute;inset:-16px;border-radius:50%;border:1.5px dashed rgba(90,61,110,.4);animation:spin 12s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.splash{position:absolute;inset:0;z-index:200;display:grid;place-items:center;background:radial-gradient(circle at 50% 45%,#fbf8f3,var(--bg) 65%);transition:opacity .6s,visibility 0s .6s}
+.splash.off{opacity:0;visibility:hidden}
+.logo{display:flex;flex-direction:column;align-items:center;gap:18px}
+.logo svg{width:110px;height:110px;overflow:visible}
+.logoOrb{width:60px;height:60px;border-radius:50%;background:var(--iri);animation:iri 3s linear infinite,iriGlow 3s ease-in-out infinite}
+.logo .word{font-family:var(--serif);font-size:38px;font-weight:400;letter-spacing:-.02em;animation:fadeUp .8s .4s var(--ease) both}
+.logo .tag2{font-size:14px;color:var(--muted);animation:fadeUp .8s .6s var(--ease) both;margin-top:-12px}
+.spinRing{transform-origin:55px 55px;animation:spin 3s linear infinite}
+
+/* ---------- desktop demo guide ---------- */
+.guide{display:none;width:310px;flex:none;color:var(--ink)}
+@media(min-width:1100px){.guide{display:block}}
+.guide .gT{font-family:var(--serif);font-size:44px;font-weight:400;letter-spacing:-.02em;line-height:1.02;margin:10px 0 14px}
+.guide .gT em{font-style:italic;color:var(--plum)}
+.guide p{color:var(--ink2);font-size:15px;line-height:1.6;margin:0 0 24px}
+.gstep{display:flex;gap:12px;align-items:center;padding:11px 14px;border-radius:14px;border:1px solid var(--line);background:rgba(255,253,249,.7);margin-bottom:8px;width:100%;text-align:left;transition:all .3s var(--spring);font-size:14px;color:var(--ink)}
+.gstep:hover{background:var(--card);transform:translateX(6px);box-shadow:var(--shadow)}
+.gstep b{width:26px;height:26px;border-radius:50%;background:var(--iri);animation:iri 7s linear infinite;color:var(--plum-d);display:grid;place-items:center;font-size:12.5px;flex:none}
+.gstep span{display:block;font-size:12px;color:var(--muted)}
+
+/* ---------- scan report ---------- */
+.scanDoc{position:relative;margin-top:16px;padding:16px;border-radius:16px;background:#fff;border:1px solid var(--line2);color:var(--ink);overflow:hidden}
+.sdHead{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-bottom:1.5px solid var(--ink);padding-bottom:8px;margin-bottom:6px;font-size:14px}
+.sdHead span{font-size:11.5px;color:var(--muted)}
+.sdRow{display:flex;align-items:center;gap:8px;padding:9px 6px;font-size:14px;border-radius:8px;transition:background .4s}
+.sdRow .dots2{flex:1;border-bottom:1.5px dotted var(--line2);transform:translateY(-3px)}
+.sdRow.hit{background:rgba(22,145,127,.1)}
+.sdRow.faint{color:var(--faint)}
+.laser{position:absolute;left:0;right:0;height:3px;top:0;background:var(--iri-deep);animation:laser 1.4s ease-in-out infinite alternate,iri 2s linear infinite;box-shadow:0 0 14px 3px rgba(190,175,242,.7)}
+@keyframes laser{to{top:calc(100% - 3px)}}
+
+@keyframes pop{0%{opacity:0;transform:scale(.92) translateY(10px)}100%{opacity:1;transform:none}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+</style>
+</head>
+<body>
+
+<aside class="guide" aria-label="Demo guide">
+  <div class="eyebrow">Hormony · MVP demo</div>
+  <div class="gT">Hormone <em>Insight</em> Engine</div>
+  <p>Longitudinal endocrine reasoning with explainable multi-agent analysis. Three specialists read your data independently, disagree in the open, and every conclusion traces back to its source.</p>
+  <div class="eyebrow" style="margin-bottom:10px">Demo path</div>
+  <button class="gstep" onclick="guide('checkin')"><b>1</b><div>Check in and unlock a pattern<span>Gamified evidence collection</span></div></button>
+  <button class="gstep" onclick="guide('timeline')"><b>2</b><div>See the unified timeline<span>Labs, symptoms, cycle, sleep, meds</span></div></button>
+  <button class="gstep" onclick="guide('ask')"><b>3</b><div>Ask, and watch the agents debate<span>Discordance engine + critic</span></div></button>
+  <button class="gstep" onclick="guide('insight')"><b>4</b><div>Tap "Why?" on the insight<span>Evidence chain with provenance</span></div></button>
+  <button class="gstep" onclick="guide('graph')"><b>5</b><div>Explore the hypothesis graph<span>Drag nodes, tap relationships</span></div></button>
+  <button class="gstep" onclick="guide('brief')"><b>6</b><div>Generate the clinician brief<span>Questions, not a diagnosis</span></div></button>
+</aside>
+
+<div class="phone" id="phone">
+  <div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
+
+  <div class="statusbar" aria-hidden="true">
+    <span id="clock">9:41</span>
+    <span class="row" style="gap:6px">
+      <svg viewBox="0 0 18 12"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="5.5" width="3" height="6.5" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/></svg>
+      <svg viewBox="0 0 16 12"><path d="M8 11.5l2.4-2.9a3.8 3.8 0 0 0-4.8 0zM3.3 6.4l1.6 1.9a4.9 4.9 0 0 1 6.2 0l1.6-1.9a7.4 7.4 0 0 0-9.4 0zM.5 3.3l1.6 1.9a9.3 9.3 0 0 1 11.8 0l1.6-1.9a11.8 11.8 0 0 0-15 0z"/></svg>
+      <svg viewBox="0 0 27 12"><rect x=".5" y=".5" width="22" height="11" rx="3.2" fill="none" stroke="currentColor" stroke-opacity=".5" style="stroke:var(--ink)"/><rect x="2.5" y="2.5" width="16" height="7" rx="1.6"/><rect x="24" y="4" width="2" height="4" rx="1" opacity=".5"/></svg>
+    </span>
+  </div>
+
+  <main>
+    <!-- TODAY -->
+    <section class="screen on" id="s-today" aria-label="Today">
+      <div class="hdr">
+        <div>
+          <div class="eyebrow" id="todayDate">Tuesday · Sep 29</div>
+          <h1 class="h1" id="greet">Hey Nancy,<br><em>welcome back</em></h1>
+        </div>
+        <div class="row" style="gap:8px">
+          <div class="streak" id="streak" title="Check-in streak"></div>
+          <button class="avatarBtn" id="avatarBtn" onclick="go('me')" aria-label="Your profile"></button>
+        </div>
+      </div>
+
+      <div class="card ringCard">
+        <div class="ringWrap" id="ringWrap">
+          <svg id="ringSvg" viewBox="0 0 300 300" role="img" aria-label="Current cycle ring"></svg>
+          <div class="ringCenter" id="ringCenter"></div>
+        </div>
+        <div class="legend" id="ringLegend"></div>
+        <div class="hint" id="ringHint"></div>
+      </div>
+
+      <div class="card unlock iriCard" id="unlockCard"></div>
+      <div class="card" id="checkin"></div>
+
+      <div class="card" id="quest"></div>
+
+      <div class="secTitle"><div class="h3">Your 90-day story</div><button class="small" onclick="go('timeline')" style="color:var(--ink2)">Open timeline →</button></div>
+      <div class="stats3" id="stats"></div>
+    </section>
+
+    <!-- TIMELINE -->
+    <section class="screen" id="s-timeline" aria-label="Timeline">
+      <div class="hdr">
+        <div><div class="eyebrow">Jul 1 – Sep 29 · all sources</div><h1 class="h1">Your <em>story</em></h1></div>
+        <button class="backBtn" onclick="openLog()" aria-label="Add a record" id="tlAdd"></button>
+      </div>
+      <div class="filters" id="tlFilters"></div>
+      <div class="card" style="padding:16px 0 16px 12px">
+        <div class="laneBox">
+          <div class="laneLabels" id="laneLabels"></div>
+          <div class="laneScroll" id="laneScroll"></div>
+        </div>
+        <div style="padding-right:16px"><div class="readout" id="readout"></div></div>
+      </div>
+
+      <div class="secTitle"><div><div class="h3">Hormone trends</div><div class="small">One chart per lab, same 90-day window</div></div>
+        <div class="seg2" id="hormoneView"><button class="on" data-v="chart">Chart</button><button data-v="table">Table</button></div></div>
+      <div class="card" id="hormones"></div>
+
+      <div class="secTitle"><div class="h3">Evidence ledger</div><span class="small" id="feedCount"></span></div>
+      <div class="card" style="padding:6px 16px" id="feed"></div>
+      <button class="btn ghost block" id="feedMore">Show more</button>
+    </section>
+
+    <!-- INSIGHTS -->
+    <section class="screen" id="s-insights" aria-label="Insights">
+      <div class="hdr"><div><div class="eyebrow" id="insCount">1 of 4 unlocked</div><h1 class="h1">Your <em>insights</em></h1></div></div>
+      <div id="insList"></div>
+      <div class="secTitle"><div class="h3">Go deeper</div></div>
+      <div class="card tap toolCard" onclick="go('graph')">
+        <div class="bub" id="icGraph"></div>
+        <div><div class="h3">Hypothesis graph</div><div class="small">Drag the factors around. Tap a link to see its evidence.</div></div>
+        <span id="chev1"></span>
+      </div>
+      <div class="card tap toolCard" onclick="go('brief')">
+        <div class="bub" id="icBrief"></div>
+        <div><div class="h3">Clinician brief</div><div class="small">A one-page summary of observations and questions for your doctor.</div></div>
+        <span id="chev2"></span>
+      </div>
+    </section>
+
+    <!-- ME -->
+    <section class="screen" id="s-me" aria-label="Profile and privacy"></section>
+
+    <!-- DEBATE -->
+    <section class="screen" id="s-debate" aria-label="Multi-agent analysis">
+      <div class="hdr" style="margin-bottom:0">
+        <button class="backBtn" onclick="leaveDebate()" aria-label="Close analysis" id="dbClose"></button>
+        <div class="h3">Multi-agent analysis</div>
+        <button class="skip" id="skipBtn" onclick="S.fast=true">Skip ⏭</button>
+      </div>
+      <div class="steps" id="steps"><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="stepLbl" id="stepLbl"></div>
+      <div id="debateBody"></div>
+    </section>
+
+    <!-- INSIGHT DETAIL -->
+    <section class="screen" id="s-insight" aria-label="Insight"></section>
+
+    <!-- GRAPH -->
+    <section class="screen" id="s-graph" aria-label="Hypothesis graph">
+      <div class="hdr">
+        <button class="backBtn" onclick="go(S.back||'insights')" aria-label="Back" id="grBack"></button>
+        <div style="flex:1"><div class="eyebrow">Evidence-backed</div><div class="h2">Hypothesis <em>graph</em></div></div>
+      </div>
+      <div class="note" id="graphNote"></div>
+      <div class="card graphCard"><svg id="graphSvg" viewBox="0 0 354 400" role="img" aria-label="Hypothesis graph of factors associated with fatigue"></svg></div>
+      <div class="legend" id="graphLegend" style="margin:-4px 0 14px"></div>
+      <div class="card relCard" id="relCard"></div>
+    </section>
+
+    <!-- BRIEF -->
+    <section class="screen" id="s-brief" aria-label="Clinician brief">
+      <div class="hdr">
+        <button class="backBtn" onclick="go(S.back||'insights')" aria-label="Back" id="brBack"></button>
+        <div style="flex:1"><div class="eyebrow">Ready for your appointment</div><div class="h2">Clinician <em>brief</em></div></div>
+      </div>
+      <div id="briefBody"></div>
+      <div class="row mt16" style="gap:10px">
+        <button class="btn ghost" style="flex:1" onclick="copyBrief()" id="copyBtn"></button>
+        <button class="btn primary" style="flex:1.3" onclick="shareBrief()" id="shareBtn"></button>
+      </div>
+    </section>
+  </main>
+
+  <nav class="nav" id="nav">
+    <button class="navBtn on" data-go="today"></button>
+    <button class="navBtn" data-go="timeline"></button>
+    <button class="askOrb" onclick="openAsk()" aria-label="Ask Hormony" id="askOrb"></button>
+    <button class="navBtn" data-go="insights"></button>
+    <button class="navBtn" data-go="me"></button>
+  </nav>
+
+  <div class="scrim" id="scrim" onclick="closeSheet()"></div>
+  <div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <div class="levelup" id="levelup"></div>
+  <canvas class="fx" id="fx"></canvas>
+  <div class="splash" id="splash" onclick="this.classList.add('off')">
+    <div class="logo">
+      <div style="position:relative;width:110px;height:110px;display:grid;place-items:center"><div class="logoOrb"></div>
+      <svg viewBox="0 0 110 110" style="position:absolute;inset:0">
+        <defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d98fbf"/><stop offset=".5" stop-color="#a592e6"/><stop offset="1" stop-color="#7fbde2"/></linearGradient></defs>
+        <circle cx="55" cy="55" r="46" fill="none" stroke="rgba(30,26,34,.08)" stroke-width="2"/>
+        <g class="spinRing"><circle cx="55" cy="55" r="46" fill="none" stroke="url(#lg)" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="70 220"/><circle cx="101" cy="55" r="4.5" fill="#5A3D6E"/></g>
+      </svg></div>
+      <div class="word">Hormony</div>
+      <div class="tag2">Your hormones, finally in context.</div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+'use strict';
+/* =========================================================
+   Hormony — Hormone Insight Engine (MVP UI prototype)
+   Everything below runs on local mock data. No network calls.
+   ========================================================= */
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const RM=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const esc=s=>String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const bridge=(type,payload={})=>{try{window.ReactNativeWebView&&window.ReactNativeWebView.postMessage(JSON.stringify(Object.assign({type},payload)))}catch(e){}};
+const buzz=(p=8)=>{if(window.ReactNativeWebView)return bridge('haptic',{p});try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
+const list=a=>a.length<=1?a.join(''):a.slice(0,-1).join(', ')+' and '+a[a.length-1];
+
+/* ---------- icons ---------- */
+const IC={
+  home:'<path d="M3.5 10.5 12 4l8.5 6.5V20a1 1 0 0 1-1 1H15v-6H9v6H4.5a1 1 0 0 1-1-1z"/>',
+  timeline:'<path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/>',
+  sparkle:'<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z"/><path d="M19 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z"/>',
+  bulb:'<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-3.6 10.8c.7.5 1.1 1.3 1.1 2.1V16h5v-.1c0-.8.4-1.6 1.1-2.1A6 6 0 0 0 12 3z"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>',
+  flask:'<path d="M9 3h6M10 3v6.2L4.6 18.4A1.8 1.8 0 0 0 6.2 21h11.6a1.8 1.8 0 0 0 1.6-2.6L14 9.2V3"/><path d="M7.2 15h9.6"/>',
+  pulse:'<path d="M3 12h4l2.5-6 5 12 2.5-6h4"/>',
+  cycle:'<circle cx="12" cy="12" r="8.5"/><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/>',
+  pill:'<rect x="2.8" y="8.3" width="18.4" height="7.4" rx="3.7" transform="rotate(-45 12 12)"/><path d="M9.4 9.4l5.2 5.2"/>',
+  moon:'<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  chev:'<path d="M9 6l6 6-6 6"/>',
+  back:'<path d="M15 6l-6 6 6 6"/>',
+  x:'<path d="M6 6l12 12M18 6 6 18"/>',
+  check:'<path d="M5 12.5l4.5 4.5L19 7"/>',
+  lock:'<rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  share:'<path d="M12 15V3M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6"/>',
+  copy:'<rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+  graph:'<circle cx="6" cy="6" r="2.5"/><circle cx="18" cy="8" r="2.5"/><circle cx="10" cy="18" r="2.5"/><path d="M8.5 6.4l7 1.2M7 8.3l2.2 7.3M16.6 10l-5 6"/>',
+  doc:'<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
+  scan:'<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/>',
+  alert:'<path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4.5M12 17.2v.01"/>',
+  scale:'<path d="M12 4v16M8 20h8M5 7h14M5 7l-2.8 6.5a3.2 3.2 0 0 0 5.6 0zM19 7l-2.8 6.5a3.2 3.2 0 0 0 5.6 0z"/>',
+  shield:'<path d="M12 3 20 6v6c0 4.8-3.4 8-8 9-4.6-1-8-4.2-8-9V6z"/><path d="M9 12l2 2 4-4"/>',
+  bolt:'<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
+  help:'<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .9-1 1.5v.5M12 16.8v.01"/>',
+  leaf:'<path d="M5 19c0-8 5-13 14-14-1 9-6 14-14 14z"/><path d="M5 19l7-7"/>',
+  flame:'<path d="M12 21c3.6 0 6.5-2.6 6.5-6.3 0-3-1.8-5.3-3.7-7.2-.3 1.9-1.2 3.1-2.4 3.6-.3-3-1.5-5.5-3.8-7 .3 2.9-1.3 4.8-2.6 6.4-1 1.2-1.5 2.6-1.5 4.2C4.5 18.4 8.4 21 12 21z"/>',
+  unlock:'<rect x="5" y="11" width="14" height="10" rx="2.5"/><path d="M8 11V8a4 4 0 0 1 7.6-1.8"/>',
+  target:'<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r=".8" fill="currentColor"/>',
+  search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',
+  star:'<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
+  dna:'<path d="M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9s10 4 10 9"/><path d="M8.5 6.5h7M8.5 17.5h7"/>',
+  upload:'<path d="M12 15V4M7.5 8.5 12 4l4.5 4.5M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>'
+};
+const ic=(n,style='')=>`<svg class="i" viewBox="0 0 24 24" aria-hidden="true"${style?` style="${style}"`:''}>${IC[n]}</svg>`;
+const ICON_INLINE='fill:none;stroke:#fff;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;color:#fff';
+const FLAME=`<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="fl" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#d98fbf"/><stop offset=".55" stop-color="#a592e6"/><stop offset="1" stop-color="#e8c77f"/></linearGradient></defs><path fill="url(#fl)" d="M12 22c4.4 0 7.5-3 7.5-7.3 0-3.4-2-6-4.2-8.2-.3 2.1-1.4 3.5-2.7 4C12.9 7.2 11.6 4.4 9 2.8c.3 3.2-1.4 5.3-2.9 7.1C5 11.2 4.5 12.8 4.5 14.7 4.5 19 7.6 22 12 22z"/><path fill="rgba(255,255,255,.55)" d="M12 21c-2 0-3.5-1.4-3.5-3.4 0-1.8 1.4-3 2.6-4.3.3 1.1 1 1.8 1.8 2 .2-1 .1-1.8-.2-2.6 1.6.9 2.8 2.6 2.8 4.8 0 2-1.5 3.5-3.5 3.5z"/></svg>`;
+
+/* ---------- data types (one validated hue each; order = CVD-safe adjacency) ---------- */
+const T={
+  cyc:{name:'Cycle',hex:'#9a6bc0',icon:'cycle',label:'Cycle'},
+  lab:{name:'Labs',hex:'#16917f',icon:'flask',label:'Lab result'},
+  sym:{name:'Symptoms',hex:'#c4614f',icon:'pulse',label:'Symptom'},
+  slp:{name:'Sleep',hex:'#4f79b8',icon:'moon',label:'Sleep'},
+  med:{name:'Meds',hex:'#b08433',icon:'pill',label:'Medication'}
+};
+const ORDER=['cyc','lab','sym','slp','med'];
+
+/* ---------- calendar: day index 0 = Jul 1 2026, today = Sep 29 ---------- */
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const WD=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+let TODAY=90, MED_DAY=46;                        // live mode overwrites these in loadLedger()
+const STARTS=[-17,11,39,67]; let NEXT_START=95;  // period start days (Jun 14, Jul 12, Aug 9, Sep 6)
+let DAY0=new Date(2026,6,1);                     // calendar date of day index 0
+const dateOf=d=>new Date(DAY0.getFullYear(),DAY0.getMonth(),DAY0.getDate()+d);
+const isoOf=d=>{const x=dateOf(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
+const dayIdx=iso=>{const[y,m,dd]=String(iso).split('-').map(Number);return Math.round((Date.UTC(y,m-1,dd)-Date.UTC(DAY0.getFullYear(),DAY0.getMonth(),DAY0.getDate()))/864e5)};
+const fmt=d=>{const x=dateOf(d);return MON[x.getMonth()]+' '+x.getDate()};
+const md=d=>{const x=dateOf(d);return String(x.getMonth()+1).padStart(2,'0')+String(x.getDate()).padStart(2,'0')};
+const cycIdx=d=>{let k=0;STARTS.forEach((s,i)=>{if(d>=s)k=i});return k};
+const cd=d=>d-STARTS[cycIdx(d)]+1;
+const phase=c=>c<=5?'Period':c<=13?'Follicular':c<=16?'Ovulation':c<=19?'Early luteal':'Late luteal';
+const isLate=c=>c>=20&&c<=28;
+const fmtH=h=>{const H=Math.floor(h),M=Math.round((h-H)*60);return M?`${H}h ${M}m`:`${H}h`};
+
+/* ---------- mock longitudinal record (evidence ledger) ---------- */
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const E=[];
+const addE=o=>{E.push(o);return o};
+STARTS.forEach(s=>{if(s>=0)addE({id:'CYC-'+md(s),d:s,type:'cyc',name:'Period started',val:'Cycle day 1',src:'Cycle log'})});
+[[7,'Estradiol','E2',88,'pg/mL'],[7,'Progesterone','P4',6.1,'ng/mL'],[7,'TSH','TSH',2.6,'mIU/L'],
+ [31,'Estradiol','E2',132,'pg/mL'],[31,'Progesterone','P4',7.9,'ng/mL'],
+ [63,'Estradiol','E2',95,'pg/mL'],[63,'Progesterone','P4',5.0,'ng/mL'],[63,'TSH','TSH',2.4,'mIU/L'],
+ [87,'Estradiol','E2',141,'pg/mL'],[87,'Progesterone','P4',4.2,'ng/mL']
+].forEach(([d,name,code,v,u])=>addE({id:`LAB-${md(d)}-${code}`,d,type:'lab',name,code,v,u,val:`${v} ${u}`,src:'Uploaded lab report (PDF)'}));
+const SYMN={F:'Fatigue',A:'Anxiety',H:'Headache',B:'Bloating'};
+const NOTES={'SYM-0928-F':'"Needed a nap by 3pm, even after coffee."','SYM-0819-F':'"Wiped out today. Three days into the new medication."','SYM-0930-F':'','SYM-0901-F':'"Heavy legs, foggy all afternoon."','SYM-0927-A':'"Restless and on edge before bed."'};
+[['F',[[6,5],[8,4],[32,5],[34,6],[36,5],[49,6],[52,6],[60,7],[62,7],[64,6],[65,7],[73,6],[86,7],[87,7],[88,8],[89,7]]],
+ ['A',[[33,5],[62,6],[85,6],[88,7]]],
+ ['H',[[9,4],[35,5],[64,5],[88,6]]],
+ ['B',[[35,4],[87,5]]]
+].forEach(([c,rows])=>rows.forEach(([d,sev])=>{const id=`SYM-${md(d)}-${c}`;addE({id,d,type:'sym',name:SYMN[c],code:c,sev,val:sev+'/10',src:'Daily check-in',note:NOTES[id]||''})}));
+addE({id:'MED-0816',d:MED_DAY,type:'med',name:'Spironolactone 50 mg',val:'Started · once daily',src:'Manual entry',note:'Prescribed for hormonal acne.'});
+(()=>{const R=rng(7);for(let d=0;d<=88;d++){const h=Math.round(((isLate(cd(d+1))?6.2:7.3)-(d>=MED_DAY?.45:0)+(R()-.5)*.9)*10)/10;addE({id:'SLP-'+md(d),d,type:'slp',name:'Sleep',h,val:h.toFixed(1)+' h',src:'Sleep app · CSV import'})}})();
+
+/* derived numbers: every figure the agents quote is computed from E, so it stays true as you log */
+function stats(){
+  const fat=E.filter(e=>e.type==='sym'&&e.name==='Fatigue').sort((a,b)=>a.d-b.d);
+  const pre=fat.filter(e=>e.d<MED_DAY).length, post=fat.length-pre;
+  const lateF=fat.filter(e=>isLate(cd(e.d)));
+  const off=fat.filter(e=>e.d>=MED_DAY&&!isLate(cd(e.d)));
+  const sl=E.filter(e=>e.type==='slp');
+  const avg=a=>a.length?a.reduce((s,e)=>s+e.h,0)/a.length:0;
+  const sMap={};sl.forEach(e=>sMap[e.d]=e.h);
+  const anx=E.filter(e=>e.type==='sym'&&e.name==='Anxiety');
+  const fDays=new Set(fat.map(e=>e.d));
+  const labs=E.filter(e=>e.type==='lab');
+  return{fat,fatN:fat.length,pre,post,late:lateF.length,off,cyclesWith:new Set(lateF.map(e=>cycIdx(e.d))).size,
+    slLate:avg(sl.filter(e=>isLate(cd(e.d+1)))).toFixed(1),slOther:avg(sl.filter(e=>!isLate(cd(e.d+1)))).toFixed(1),
+    slBefore:avg(sl.filter(e=>e.d<MED_DAY&&!isLate(cd(e.d+1)))).toFixed(1),slAfter:avg(sl.filter(e=>e.d>=MED_DAY&&!isLate(cd(e.d+1)))).toFixed(1),   // like-for-like: nights outside days 20–28 only
+    shortBefore:fat.filter(e=>sMap[e.d-1]!==undefined&&sMap[e.d-1]<6.5).length,
+    anxN:anx.length,anxCo:anx.filter(e=>fDays.has(e.d)||fDays.has(e.d-1)||fDays.has(e.d+1)).length,
+    labN:labs.length,draws:new Set(labs.map(e=>e.d)).size,symN:E.filter(e=>e.type==='sym').length,
+    slN:sl.length,cycN:E.filter(e=>e.type==='cyc').length,medN:E.filter(e=>e.type==='med').length};
+}
+
+/* ---------- agents ---------- */
+const AG=[
+  {k:'lab',name:'Lab Agent',short:'Progesterone change',role:'Hormone & lab trends',icon:'flask',reads:'Lab results only'},
+  {k:'sym',name:'Symptom Agent',short:'Medication change',role:'Symptom patterns',icon:'pulse',reads:'Symptoms, check-ins and medication changes'},
+  {k:'cyc',name:'Cycle Agent',short:'Cycle timing',role:'Cycle-phase timing',icon:'cycle',reads:'Cycle history and sleep timing'}
+];
+function agentDefs(st){
+  const off=st.off;
+  const D={
+    lab:{thoughts:[`Scoping ${st.labN} lab values across ${st.draws} blood draws`,'Aligning every draw to its cycle day…',`Found 2 comparable day-21 samples: ${fmt(31)} and ${fmt(87)}`,'TSH stable: 2.6 → 2.4 mIU/L','Gap: no iron or B12 results in 90 days'],
+      hyp:'Day-21 progesterone fell from <b>7.9 to 4.2 ng/mL</b> while fatigue rose. The lab change is temporally associated with the increase.',
+      conf:.78,adj:.52,why:'Only 2 comparable samples',ev:['LAB-0801-P4','LAB-0926-P4','LAB-0926-E2','LAB-0902-TSH']},
+    sym:{thoughts:[`Reading ${st.symN} symptom logs`,`Fatigue: ${st.pre} logs in the 46 days before ${fmt(MED_DAY)}, ${st.post} in the 45 days after`,`${off.length} post-change fatigue logs fall outside days 20–28`,`Anxiety appeared within a day of fatigue in ${st.anxCo} of ${st.anxN} logs`],
+      hyp:`Fatigue <b>${st.post>=st.pre*2?'more than doubled':'increased'}</b> after spironolactone was started on ${fmt(MED_DAY)}, including days outside the late-cycle window.`,
+      conf:.71,adj:.68,why:`Sleep also changed after ${fmt(MED_DAY)}`,ev:['MED-0816',...off.slice(0,3).map(e=>e.id)]},
+    cyc:{thoughts:[`Mapping ${st.fatN} fatigue logs onto cycle days`,`${st.late} of ${st.fatN} fall on cycle days 20–28`,`The pattern repeats in ${st.cyclesWith} of 4 cycles`,`Late-luteal nights average ${st.slLate} h vs ${st.slOther} h`],
+      hyp:'Fatigue clusters in the <b>late-luteal window (days 20–28)</b> in every cycle observed. This is a repeating phase pattern.',
+      conf:.65,adj:.74,why:`Repeats in ${st.cyclesWith} of 4 cycles`,ev:['CYC-0809','CYC-0906','SYM-0830-F','SYM-0926-F']}
+  };
+  return AG.map(a=>Object.assign({},a,D[a.k]));
+}
+const agAv=(a,s=48)=>`<div class="av" style="--c:${T[a.k].hex};width:${s}px;height:${s}px;border-radius:${Math.round(s*.34)}px">${ic(a.icon,`width:${Math.round(s*.5)}px;height:${Math.round(s*.5)}px`)}</div>`;
+
+/* ---------- gamification state ---------- */
+const LEVELS=[[1,'Curious',0],[2,'Noticer',200],[3,'Pattern Seeker',350],[4,'Signal Sleuth',500],[5,'Rhythm Reader',800]];
+const BADGES=[['first','leaf','First log'],['streak7','flame','7-day streak'],['lab','flask','Lab uploader'],['pattern','unlock','Pattern unlocked'],['debate','scale','First debate'],['quest','target','Quest complete'],['scan','scan','Report scanner'],['brief','doc','Clinician-ready'],['exp','dna','Experimenter'],['sleuth','search','Signal Sleuth'],['streak30','moon','30-day streak'],['three','star','3 insights']];
+const S={xp:410,streak:12,checked:false,energy:2,sleepH:6.5,tags:new Set(),evidence:80,need:{energy:false,sleep:false},
+  unlocked:false,debated:false,briefed:false,quest:{checkin:false,timeline:false,ask:false},
+  badges:new Set(['first','streak7','lab']),paused:new Set(),range:90,lanes:new Set(ORDER),sel:87,feedN:12,
+  back:null,fast:false,exp:false,current:'today',qs:new Set([0,1,2]),scanRun:0};
+function lvl(xp=S.xp){let L=LEVELS[0];LEVELS.forEach(l=>{if(xp>=l[2])L=l});const nx=LEVELS.find(l=>l[2]>xp);return{n:L[0],name:L[1],from:L[2],to:nx?nx[2]:L[2],next:nx}}
+const lvlPct=()=>{const l=lvl();return l.next?(S.xp-l.from)/(l.to-l.from):1};
+
+/* ---------- LIVE BACKEND (app mode) ----------
+   With window.HORMONY_CONFIG.apiUrl (injected by the Expo shell) or ?api=… in a browser, this page
+   reads/writes the real evidence ledger and streams real analyses. Without either it stays the
+   self-contained prototype on mock data. Markup and styles are untouched in both modes. */
+const HCFG=window.HORMONY_CONFIG||{};
+const PID=HCFG.patientId||'nancy';
+const API={
+  base:String(HCFG.apiUrl||new URLSearchParams(location.search).get('api')||'').replace(/\/+$/,''),
+  get on(){return !!this.base&&S.source!=='offline'},
+  url(p){return this.base+p},
+  async req(p,opt){const r=await fetch(this.url(p),opt);if(!r.ok)throw new Error(r.status+' '+(await r.text()).slice(0,200));return r.json()},
+  get(p){return this.req(p)},
+  post(p,b){return this.req(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})}
+};
+const TYPE_IN={cycle:'cyc',cyc:'cyc',lab:'lab',symptom:'sym',sym:'sym',sleep:'slp',slp:'slp',med:'med'};
+const AG_IN={lab:'lab',symptom:'sym',cycle:'cyc',sym:'sym',cyc:'cyc'}, AG_OUT={lab:'lab',sym:'symptom',cyc:'cycle'};
+const SYMCODE={Fatigue:'F',Anxiety:'A',Headache:'H',Bloating:'B',Cramps:'C','Low mood':'M','Brain fog':'G'};
+const safeId=id=>String(id).replace(/[^\w-]/g,'');
+function fromApi(a){
+  const type=TYPE_IN[a.type];if(!type)return null;
+  const e={id:a.id,d:dayIdx(a.date),type,name:a.name||type,code:a.code||undefined,src:a.source||'',note:a.note||''};
+  if(type==='lab'){e.v=a.value;e.u=a.unit||'';e.val=`${a.value} ${e.u}`.trim()}
+  else if(type==='sym'){e.sev=a.severity||0;e.val=e.sev+'/10'}
+  else if(type==='slp'){e.h=+a.value||0;e.val=e.h.toFixed(1)+' h'}
+  else if(type==='med'){e.val=a.code||'Started'}
+  else e.val=/period started/i.test(e.name)?'Cycle day 1':e.name;
+  return e;
+}
+async function loadLedger(){
+  const r=await API.get(`/patients/${encodeURIComponent(PID)}/timeline?days=91`);   // 91 = day 0..90 inclusive
+  const[y,m,dd]=String(r.today).split('-').map(Number);
+  DAY0=new Date(y,m-1,dd-90);TODAY=90;
+  const evs=(r.events||[]).map(fromApi).filter(e=>e&&e.d>=0&&e.d<=TODAY);
+  // only real period starts move the cycle; flow/spotting logs must not reset it
+  const st=new Set((r.cycle_starts||[]).map(dayIdx).filter(d=>d<0));
+  evs.forEach(e=>{if(e.type==='cyc'&&/period started/i.test(e.name))st.add(e.d)});
+  if(st.size){STARTS.splice(0,STARTS.length,...[...st].sort((a,b)=>a-b));
+    const gaps=STARTS.slice(1).map((v,i)=>v-STARTS[i]).sort((a,b)=>a-b);
+    NEXT_START=STARTS[STARTS.length-1]+(gaps.length?gaps[Math.floor(gaps.length/2)]:28)}
+  const med=evs.filter(e=>e.type==='med').sort((a,b)=>a.d-b.d)[0];if(med)MED_DAY=med.d;
+  E.splice(0,E.length,...evs);
+}
+async function persist(body){
+  if(!API.on)return null;
+  try{return await API.post(`/patients/${encodeURIComponent(PID)}/events`,body)}
+  catch(err){toast('Saved here only · backend unreachable','help');return null}
+}
+async function syncLedger(){if(!API.on)return;try{await loadLedger();afterData()}catch(e){}}
+async function bootLive(){
+  if(!API.base)return;
+  try{await loadLedger();S.source='live'}
+  catch(err){S.source='offline';setTimeout(()=>toast('Offline · showing demo data','help'),1700);return}
+  $('#todayDate').textContent=`${WD[dateOf(TODAY).getDay()]} · ${fmt(TODAY)}`;
+  renderTodayDynamic();renderStats();if(S.current==='timeline')renderTimeline();
+}
+function pickImport(){
+  if(!API.on)return toast('Connect the backend to import files','upload');
+  const inp=document.createElement('input');inp.type='file';inp.accept='.csv,.json,text/csv,application/json';
+  inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f)return;const fd=new FormData();fd.append('file',f,f.name);
+    try{const j=await API.req(`/patients/${encodeURIComponent(PID)}/import`,{method:'POST',body:fd});
+      toast(`${j.added} added · ${j.skipped} skipped${j.errors&&j.errors.length?` · ${j.errors.length} errors`:''}`,'upload');
+      if(j.added){xp(25);await syncLedger()}if(S.current==='me')renderMe()}
+    catch(err){toast('Import failed · check the file format','help')}};
+  inp.click();
+}
+window.hormonyBack=()=>{    // Android back button, called by the Expo shell
+  if($('#levelup').classList.contains('on')){$('#levelup').classList.remove('on');return true}
+  if($('#sheet').classList.contains('on')){closeSheet();return true}
+  if(S.current==='debate'){leaveDebate();return true}
+  if(['insight','graph','brief'].includes(S.current)){go(S.back&&S.back!==S.current?S.back:'insights');return true}
+  if(S.current!=='today'){go('today');return true}
+  return false;
+};
+
+/* ---------- core UI ---------- */
+function go(name,opts={}){
+  const prev=S.current;
+  if(prev==='graph'&&name!=='graph')stopGraph();
+  if(prev==='debate'&&name!=='debate')runId++;
+  S.current=name;
+  $$('.screen').forEach(s=>s.classList.toggle('on',s.id==='s-'+name));
+  const tab={today:'today',timeline:'timeline',insights:'insights',me:'me',insight:'insights',graph:'insights',brief:'insights'}[name];
+  $$('.navBtn').forEach(b=>b.classList.toggle('on',b.dataset.go===tab));
+  $('#nav').classList.toggle('hide',name==='debate');
+  if(!opts.keepScroll)$('#s-'+name).scrollTop=0;
+  closeSheet();
+  if(name==='today')renderTodayDynamic();
+  if(name==='timeline'){renderTimeline();questDone('timeline')}
+  if(name==='insights')renderInsights();
+  if(name==='insight')renderInsight();
+  if(name==='graph')startGraph();
+  if(name==='brief')renderBrief();
+  if(name==='me')renderMe();
+  buzz(5);
+}
+function push(name){S.back=S.current;go(name)}
+let toastT;
+function toast(msg,icon='check'){const t=$('#toast');t.innerHTML=ic(icon)+esc(msg);t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),2100)}
+function openSheet(html){const sh=$('#sheet');sh.innerHTML='<div class="grab"></div><div class="sheetBody">'+html+'</div>';sh.scrollTop=0;sh.classList.add('on');$('#scrim').classList.add('on')}
+function swapSheet(html){const b=$('#sheet .sheetBody');if(!b||!$('#sheet').classList.contains('on'))return openSheet(html);b.outerHTML='<div class="sheetBody">'+html+'</div>';$('#sheet').scrollTop=0}
+function closeSheet(){$('#sheet').classList.remove('on');$('#scrim').classList.remove('on');S.scanRun++}
+function countUp(el,to,dur=900,dec=0,suf=''){if(!el)return;if(RM||dur<20){el.textContent=to.toFixed(dec)+suf;return}const t0=performance.now();const f=t=>{const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);el.textContent=(to*e).toFixed(dec)+suf;if(p<1)requestAnimationFrame(f)};requestAnimationFrame(f)}
+function replay(el,cls='bumpA'){if(!el)return;el.classList.remove(cls);void el.offsetWidth;el.classList.add(cls)}
+
+function xp(n,anchor){
+  const before=lvl();S.xp+=n;
+  const ph=$('#phone').getBoundingClientRect();
+  let x=ph.width/2,y=ph.height*.42;
+  if(anchor&&anchor.getBoundingClientRect){const r=anchor.getBoundingClientRect();if(r.width){x=r.left-ph.left+r.width/2;y=Math.max(60,r.top-ph.top)}}
+  const f=document.createElement('div');f.className='xpFloat';f.textContent='+'+n+' XP';f.style.left=x+'px';f.style.top=y+'px';
+  $('#phone').appendChild(f);setTimeout(()=>f.remove(),1600);
+  renderAvatar();
+  const after=lvl();if(after.n>before.n)setTimeout(()=>levelUp(after),1000);
+}
+function earn(k){if(S.badges.has(k))return;S.badges.add(k);S.fresh=k;const b=BADGES.find(x=>x[0]===k);if(b)setTimeout(()=>toast(`Badge earned · ${b[2]}`,'sparkle'),1400)}
+function levelUp(L){
+  const el=$('#levelup');
+  el.innerHTML=`<div class="lvCard"><div class="eyebrow" style="color:var(--plum)">Level up</div><div class="lvOrb"><span>${L.n}</span></div><div class="h1" style="text-align:center">You're a <em>${L.name}</em></div><p class="p" style="margin:12px auto 24px;max-width:270px;text-align:center">You've given Hormony enough context to reason across your cycles. New: a weekly pattern digest.</p><button class="btn gold" onclick="$('#levelup').classList.remove('on')">Keep going</button></div>`;
+  el.classList.add('on');confetti(170,.5,.4);buzz([15,40,15]);if(L.n>=4)earn('sleuth');
+}
+
+/* confetti */
+const fx=$('#fx'),fctx=fx.getContext('2d');let parts=[],fxOn=false;
+const CONF=['#e2a6cc','#b3a2ee','#98c8ea','#a3dcbf','#e8c77f','#eeb6c3','#5A3D6E','#c9b8f2'];
+function confetti(n=110,ox=.5,oy=.4){
+  if(RM)return;
+  const r=$('#phone').getBoundingClientRect(),dpr=devicePixelRatio||1;
+  if(!fxOn){fx.width=r.width*dpr;fx.height=r.height*dpr;fctx.setTransform(dpr,0,0,dpr,0,0)}
+  for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,sp=3+Math.random()*8;parts.push({x:r.width*ox,y:r.height*oy,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-5,s:5+Math.random()*6,rot:Math.random()*6,vr:(Math.random()-.5)*.4,c:CONF[i%CONF.length],t:0,sh:i%3})}
+  if(!fxOn){fxOn=true;requestAnimationFrame(fxLoop)}
+}
+function fxLoop(){
+  const dpr=devicePixelRatio||1,w=fx.width/dpr,h=fx.height/dpr;
+  fctx.clearRect(0,0,w,h);
+  parts=parts.filter(p=>p.t<170&&p.y<h+30);
+  for(const p of parts){p.t++;p.vy+=.24;p.vx*=.985;p.vy*=.985;p.x+=p.vx;p.y+=p.vy;p.rot+=p.vr;
+    fctx.save();fctx.globalAlpha=Math.max(0,1-p.t/170);fctx.translate(p.x,p.y);fctx.rotate(p.rot);fctx.scale(1,Math.max(.15,Math.abs(Math.cos(p.t*.12+p.rot))));fctx.fillStyle=p.c;
+    const draw=()=>{if(p.sh===0){fctx.beginPath();fctx.arc(0,0,p.s/2,0,7);fctx.fill()}else fctx.fillRect(-p.s/2,-p.s/4,p.s,p.s/2)};
+    draw();fctx.globalAlpha*=Math.abs(Math.sin(p.t*.2+p.rot*2))*.75;fctx.fillStyle='#fff';draw();fctx.restore()}   // foil sheen
+  if(parts.length)requestAnimationFrame(fxLoop);else{fxOn=false;fctx.clearRect(0,0,w,h)}
+}
+
+/* ---------- header bits ---------- */
+function ringSvg(size,sw,p){const r=(size-sw)/2-1,c=2*Math.PI*r;return`<svg class="lvl" viewBox="0 0 ${size} ${size}" style="width:${size}px;height:${size}px"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="rgba(30,26,34,.12)" stroke-width="${sw}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="url(#goldG)" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${(c*(1-p)).toFixed(1)}"/></svg>`}
+function renderAvatar(){$('#avatarBtn').innerHTML=ringSvg(46,3,lvlPct())+`<div class="face">N</div><div class="lvlBadge">${lvl().n}</div>`}
+function renderStreak(){$('#streak').innerHTML=FLAME+`<span>${S.streak}</span>`}
+
+/* ---------- TODAY: cycle ring ---------- */
+const RC=150,R_SEG=118,SEG=360/28;
+const dayA=c=>-90+(c-1)*SEG;
+const pt=(r,a)=>{const t=a*Math.PI/180;return[RC+r*Math.cos(t),RC+r*Math.sin(t)]};
+function arc(r,a0,a1,rev){const[x0,y0]=pt(r,a0),[x1,y1]=pt(r,a1),l=(a1-a0)>180?1:0;
+  return rev?`M${x1.toFixed(2)} ${y1.toFixed(2)}A${r} ${r} 0 ${l} 0 ${x0.toFixed(2)} ${y0.toFixed(2)}`:`M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${l} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`}
+const segStyle=c=>c<=5?['#9a6bc0',1]:c<=13?['#9a6bc0',.24]:c<=16?['#9a6bc0',.72]:c<=19?['#9a6bc0',.4]:['#9a6bc0',.58];
+function renderRing(){
+  const tc=cd(TODAY),s0=STARTS[3];
+  let h=`<defs><filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="soft" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="3.5"/></filter></defs>`;
+  [94,82,70].forEach(r=>h+=`<circle cx="${RC}" cy="${RC}" r="${r}" fill="none" stroke="rgba(30,26,34,.06)"/>`);
+  for(let c=1;c<=28;c++){const[col,op]=segStyle(c),fut=c>tc;
+    h+=`<path d="${arc(R_SEG,dayA(c)+.9,dayA(c+1)-.9)}" stroke="${col}" stroke-opacity="${fut?(op*.35).toFixed(2):op}" stroke-width="${c===tc?24:18}" fill="none" style="animation:segIn .5s ${c*22}ms both"/>`}
+  [['Period',1,5],['Follicular',6,13],['Ovulation',14,16],['Luteal',17,28]].forEach(([n,a,b],i)=>{
+    const a0=dayA(a),a1=dayA(b+1),norm=(((a0+a1)/2)%360+360)%360,rev=norm>10&&norm<170;
+    h+=`<path id="pl${i}" d="${arc(rev?143:133,a0,a1,rev)}" fill="none"/><text class="axisTxt" style="font-size:10px;letter-spacing:.14em;font-weight:700"><textPath href="#pl${i}" xlink:href="#pl${i}" startOffset="50%" text-anchor="middle">${n.toUpperCase()}</textPath></text>`});
+  const evs=E.filter(e=>e.d>=s0&&e.d<=TODAY);
+  evs.filter(e=>e.type==='slp'&&e.h<6.5).forEach(e=>{const c=cd(e.d);h+=`<path d="${arc(82,dayA(c)+2.2,dayA(c+1)-2.2)}" stroke="#4f79b8" stroke-width="6" stroke-linecap="round" fill="none"/>`});
+  [...new Set(evs.filter(e=>e.type==='lab').map(e=>e.d))].forEach(d=>{const[x,y]=pt(70,dayA(cd(d))+SEG/2);h+=`<circle cx="${x}" cy="${y}" r="5" fill="#16917f" stroke="#FFFDF9" stroke-width="2"/>`});
+  const sd={};evs.filter(e=>e.type==='sym').forEach(e=>sd[e.d]=(sd[e.d]||0)+1);
+  Object.entries(sd).forEach(([d,n])=>{const[x,y]=pt(94,dayA(cd(+d))+SEG/2);h+=`<circle cx="${x}" cy="${y}" r="${(3.5+Math.min(n,3)*1.2).toFixed(1)}" fill="#c4614f" stroke="#FFFDF9" stroke-width="2"/>`});
+  const[tx,ty]=pt(R_SEG,dayA(tc)+SEG/2);
+  h+=`<circle cx="${tx}" cy="${ty}" r="14" fill="url(#goldG)" filter="url(#soft)" class="todayOrb"/><circle cx="${tx}" cy="${ty}" r="6.5" fill="#fff" stroke="#5A3D6E" stroke-width="2.5"/>`;
+  h+=`<g id="scrubDot" style="opacity:0;transition:opacity .2s"><circle r="12" fill="none" stroke="#5A3D6E" stroke-width="2"/></g>`;
+  $('#ringSvg').innerHTML=h;
+  ringCenter(TODAY);
+}
+function ringCenter(d){
+  const c=cd(d),el=$('#ringCenter');let sub;
+  if(d>TODAY)sub='Predicted';
+  else if(d===TODAY)sub=`~${NEXT_START-TODAY} days until your period`;
+  else{const ev=E.filter(e=>e.d===d&&e.type!=='slp'),sl=E.find(e=>e.d===d&&e.type==='slp');
+    const p=ev.map(e=>e.type==='sym'?`${e.name} ${e.sev}/10`:e.type==='lab'?`${e.code||e.name} ${e.v}`:e.name);if(sl)p.push(`Sleep ${sl.h}h`);
+    sub=p.length?p.slice(0,3).join(' · '):'Nothing logged'}
+  el.innerHTML=`<div class="eyebrow">${d===TODAY?'Cycle day':fmt(d)}</div><div class="ringDay">${c}</div><div class="ringPhase">${phase(c)}</div><div class="ringSub">${esc(sub)}</div>`;
+  replay(el,'swap');
+}
+function initRing(){
+  const w=$('#ringWrap');let active=false,last=null,timer;
+  const at=ev=>{const r=w.getBoundingClientRect(),x=(ev.clientX-r.left)/r.width*300-RC,y=(ev.clientY-r.top)/r.height*300-RC;const a=(Math.atan2(y,x)*180/Math.PI+90+360)%360;return Math.min(28,Math.floor(a/SEG)+1)};
+  const show=c=>{if(c===last)return;last=c;buzz(4);ringCenter(STARTS[3]+c-1);const[x,y]=pt(R_SEG,dayA(c)+SEG/2),g=$('#scrubDot');if(g){g.setAttribute('transform',`translate(${x.toFixed(1)} ${y.toFixed(1)})`);g.style.opacity=1}};
+  w.addEventListener('pointerdown',e=>{active=true;try{w.setPointerCapture(e.pointerId)}catch(_){}clearTimeout(timer);show(at(e));$('#ringHint').style.opacity=0});
+  w.addEventListener('pointermove',e=>{if(active)show(at(e))});
+  const end=()=>{if(!active)return;active=false;timer=setTimeout(()=>{last=null;ringCenter(TODAY);const g=$('#scrubDot');if(g)g.style.opacity=0},2200)};
+  w.addEventListener('pointerup',end);w.addEventListener('pointercancel',end);
+}
+
+/* ---------- TODAY: unlock card (the core game loop: log more → evidence → unlock) ---------- */
+function renderUnlock(){
+  const el=$('#unlockCard'),open=S.unlocked;
+  el.classList.toggle('open',open);
+  el.innerHTML=`<div class="row" style="gap:12px"><div class="lockBadge">${ic(open?'sparkle':'lock')}</div><div style="flex:1"><div class="eyebrow" style="color:${open?'var(--plum)':'var(--ink2)'}">${open?'Pattern unlocked':'Pattern forming'}</div><div class="h3" style="margin-top:2px">${open?'Your fatigue has a rhythm':'Something about your fatigue…'}</div></div><div class="evPct" id="evPct">${S.evidence}%</div></div>
+  <div class="blurText">Your fatigue follows your cycle, and has come more often since ${fmt(MED_DAY)}.</div>
+  <div class="meter"><i id="evBar" style="width:${S.evidence}%"></i></div>
+  ${open?`<div class="row mt16" style="gap:10px"><button class="btn primary" style="flex:1.5;padding:0 14px" onclick="askDefault()">${ic('sparkle')}Ask the agents why</button><button class="btn ghost" style="flex:1;padding:0 12px" onclick="push('insight')">See insight</button></div>`
+  :`<div class="small" style="margin-top:12px">Log 2 more things to unlock it:</div><div class="need"><span class="${S.need.energy?'done':''}">${ic(S.need.energy?'check':'bolt')}Today's energy</span><span class="${S.need.sleep?'done':''}">${ic(S.need.sleep?'check':'moon')}Last night's sleep</span></div>`}`;
+}
+function bumpEvidence(key){
+  if(S.unlocked||S.need[key])return;
+  S.need[key]=true;S.evidence=Math.min(100,S.evidence+10);
+  const bar=$('#evBar');if(bar)bar.style.width=S.evidence+'%';
+  const p=$('#evPct');if(p){p.textContent=S.evidence+'%';replay(p)}
+  const idx=key==='energy'?0:1,chip=$$('#unlockCard .need span')[idx];
+  if(chip){chip.classList.add('done');chip.innerHTML=ic('check')+(idx?"Last night's sleep":"Today's energy");replay(chip)}
+  buzz(10);
+  if(S.evidence>=100)setTimeout(unlockPattern,1100);
+}
+function unlockPattern(){
+  if(S.unlocked)return;S.unlocked=true;S.evidence=100;
+  renderUnlock();confetti(150,.5,.45);buzz([10,40,10]);toast('Pattern unlocked!','sparkle');earn('pattern');xp(30,$('#unlockCard'));
+  if(S.current==='today')$('#unlockCard').scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+/* ---------- TODAY: check-in ---------- */
+const FACES=[['😩','Drained'],['😴','Tired'],['😐','Okay'],['🙂','Good'],['⚡','Energized']];
+const TAGS=['Fatigue','Anxiety','Headache','Bloating','Cramps','Low mood','Brain fog'];
+const sleepWord=h=>h<6?'Short night':h<7?'A bit under':h<8.5?'Solid':'Long rest';
+function renderCheckin(){
+  const el=$('#checkin');
+  if(S.checked){el.innerHTML=`<div class="row between done"><div class="row"><div class="bub" style="background:var(--plum)">${ic('check')}</div><div><div class="h3">Checked in for today</div><div class="small">${FACES[S.energy][1]} energy · ${fmtH(S.sleepH)} sleep${S.tags.size?' · '+esc([...S.tags].join(', ')):''}</div></div></div><button class="small" style="color:var(--ink2)" onclick="S.checked=false;renderCheckin()">Edit</button></div>`;return}
+  el.innerHTML=`<div class="row between"><div><div class="eyebrow">Daily check-in</div><div class="h2" style="margin-top:4px">How are you <em>today?</em></div></div><span class="xpTag">+35 XP</span></div>
+  <div class="energy"><div class="face" id="face">${FACES[S.energy][0]}</div><div style="flex:1"><div class="eLabel">Energy <span id="eLbl">${FACES[S.energy][1]}</span></div><input type="range" class="slider" min="0" max="4" step="1" value="${S.energy}" id="eSlider" aria-label="Energy level"></div></div>
+  <div class="divider"></div>
+  <div class="eLabel" style="margin:0">Last night's sleep <span>night of ${fmt(TODAY-1)}</span></div>
+  <div class="stepper"><button class="stepBtn" onclick="stepSleep(-.5)" aria-label="Less sleep">−</button><div class="stepVal" id="sleepVal">${fmtH(S.sleepH)}<small>${sleepWord(S.sleepH)}</small></div><button class="stepBtn" onclick="stepSleep(.5)" aria-label="More sleep">+</button></div>
+  <div class="divider"></div>
+  <div class="eLabel" style="margin:0">Anything else? <span>tap all that apply</span></div>
+  <div class="chips">${TAGS.map(t=>`<button class="chip ${S.tags.has(t)?'on':''}" onclick="toggleTag(this,'${t}')">${t}</button>`).join('')}</div>
+  <button class="btn primary block mt16" onclick="saveCheckin(this)">${ic('check')}Save check-in</button>`;
+  const s=$('#eSlider');
+  s.addEventListener('input',()=>{S.energy=+s.value;const f=$('#face');f.textContent=FACES[S.energy][0];$('#eLbl').textContent=FACES[S.energy][1];replay(f,'bump');buzz(5)});
+}
+function stepSleep(dv){S.sleepH=Math.max(3,Math.min(11,S.sleepH+dv));const v=$('#sleepVal');v.innerHTML=fmtH(S.sleepH)+`<small>${sleepWord(S.sleepH)}</small>`;replay(v);buzz(5)}
+function toggleTag(b,t){S.tags.has(t)?S.tags.delete(t):S.tags.add(t);b.classList.toggle('on');buzz(5)}
+function saveCheckin(btn){
+  const first=!S.quest.checkin;S.checked=true;
+  const sd=TODAY-1,ex=E.find(e=>e.type==='slp'&&e.d===sd);
+  if(ex){ex.h=S.sleepH;ex.val=S.sleepH.toFixed(1)+' h'}else addE({id:'SLP-'+md(sd),d:sd,type:'slp',name:'Sleep',h:S.sleepH,val:S.sleepH.toFixed(1)+' h',src:'Daily check-in'});
+  const tags=new Set(S.tags);if(S.energy<=1)tags.add('Fatigue');
+  tags.forEach(t=>{const id='USR-'+md(TODAY)+'-'+t.replace(/\s/g,''),sev=t==='Fatigue'&&S.energy===0?8:6;if(!E.find(e=>e.id===id))addE({id,d:TODAY,type:'sym',name:t,sev,val:sev+'/10',src:'Daily check-in',note:''})});
+  if(first){xp(35,btn);S.streak++;renderStreak();replay($('#streak'),'pop');questDone('checkin')}
+  buzz(12);renderCheckin();renderRing();renderStats();
+  toast(first?`Check-in saved · ${S.streak}-day streak`:'Check-in updated');
+  setTimeout(()=>bumpEvidence('energy'),500);setTimeout(()=>bumpEvidence('sleep'),1100);
+  if(!S.unlocked&&S.current==='today')setTimeout(()=>$('#unlockCard').scrollIntoView({behavior:'smooth',block:'center'}),250);
+  if(API.on){const sv=S.saved=S.saved||{sleep:null,tags:new Set()};(async()=>{     // edits only send what changed
+    if(sv.sleep!==S.sleepH){await persist({type:'sleep',name:'Sleep',value:S.sleepH,unit:'h',date:isoOf(TODAY-1),source:'Daily check-in'});sv.sleep=S.sleepH}
+    for(const t of tags){if(sv.tags.has(t))continue;const sev=t==='Fatigue'&&S.energy===0?8:6;await persist({type:'symptom',name:t,severity:sev,code:SYMCODE[t]||null,date:isoOf(TODAY),source:'Daily check-in'});sv.tags.add(t)}
+    syncLedger()})()}
+}
+
+/* ---------- TODAY: quest & stats ---------- */
+const QUEST=[['checkin','Daily check-in','+35'],['timeline','Explore your timeline','+10'],['ask','Ask the agents a question','+50']];
+function renderQuest(){
+  const n=QUEST.filter(q=>S.quest[q[0]]).length;
+  $('#quest').innerHTML=`<div class="row between"><div><div class="eyebrow">Today's quest</div><div class="h3" style="margin-top:4px">${n===3?'Quest complete ✦':'Become a pattern detective'}</div></div><div class="dots">${QUEST.map(q=>`<i class="${S.quest[q[0]]?'on':''}"></i>`).join('')}</div></div>
+  <div class="mt8">${QUEST.map(([k,t,x])=>`<div class="qItem ${S.quest[k]?'ok':''}"><div class="qCheck">${ic('check')}</div><div class="qText">${t}</div><span class="xpTag">${x} XP</span></div>`).join('')}</div>`;
+}
+function questDone(k){
+  if(S.quest[k])return;S.quest[k]=true;renderQuest();
+  if(k==='timeline'){xp(10);toast('Quest step done · timeline explored')}
+  if(QUEST.every(q=>S.quest[q[0]]))setTimeout(()=>{confetti(90,.5,.3);toast("Today's quest complete!",'sparkle');earn('quest')},1600);
+}
+function renderStats(){
+  const st=stats();
+  $('#stats').innerHTML=[[91,'days tracked'],[E.length,'data points'],[st.labN,'lab values']].map(([v,l])=>`<div class="stat"><b data-v="${v}">0</b><span>${l}</span></div>`).join('');
+  $$('#stats b').forEach(b=>countUp(b,+b.dataset.v,1100));
+}
+function renderTodayDynamic(){renderUnlock();renderQuest();renderAvatar();renderStreak();renderRing()}
+
+/* ---------- TIMELINE ---------- */
+const LANE_H={cyc:30,lab:38,sym:48,slp:48,med:32};
+const evLabel=e=>e.type==='sym'?`${e.name} ${e.sev}/10`:e.type==='lab'?`${e.name} ${e.v} ${e.u}`:e.type==='slp'?`Sleep ${fmtH(e.h)}`:e.name;
+const barP=(x,y,w,h,r)=>{r=Math.min(r,w/2,h);return`M${x.toFixed(1)} ${(y+h).toFixed(1)}V${(y+r).toFixed(1)}Q${x.toFixed(1)} ${y.toFixed(1)} ${(x+r).toFixed(1)} ${y.toFixed(1)}H${(x+w-r).toFixed(1)}Q${(x+w).toFixed(1)} ${y.toFixed(1)} ${(x+w).toFixed(1)} ${(y+r).toFixed(1)}V${(y+h).toFixed(1)}Z`};
+function renderTimeline(){
+  $('#tlFilters').innerHTML=`<div class="seg2" id="rangeSeg">${[30,90].map(r=>`<button class="${S.range===r?'on':''}" data-r="${r}">${r} days</button>`).join('')}</div>`+
+    ORDER.map(k=>`<button class="chip ${S.lanes.has(k)?'sel':'off'}" data-k="${k}"><span class="sw" style="background:${T[k].hex}"></span>${T[k].name}</button>`).join('');
+  $$('#rangeSeg button').forEach(b=>b.onclick=()=>{S.range=+b.dataset.r;buzz(5);renderTimeline()});
+  $$('#tlFilters .chip').forEach(b=>b.onclick=()=>{const k=b.dataset.k;if(S.lanes.has(k)){if(S.lanes.size===1)return toast('Keep at least one lane on','help');S.lanes.delete(k)}else S.lanes.add(k);buzz(5);renderTimeline()});
+  renderLanes();readout(S.sel);renderHormones();renderFeed();
+}
+function renderLanes(){
+  const d0=S.range===90?0:TODAY-29,n=TODAY-d0+1,sc=$('#laneScroll');
+  const vis=Math.max(240,(sc.clientWidth||300)-18),dw=S.range===90?9:Math.max(9,(vis-12)/n);
+  const W=Math.round(n*dw+12),x=d=>6+(d-d0+.5)*dw;
+  const lanes=ORDER.filter(k=>S.lanes.has(k)),TOP=22,rows={};let y=TOP;
+  lanes.forEach(k=>{rows[k]={y,h:LANE_H[k]};y+=LANE_H[k]});
+  const H=y+22,inR=e=>e.d>=d0&&e.d<=TODAY;
+  let s=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" id="laneSvg" role="img" aria-label="Timeline of labs, symptoms, cycle, sleep and medication">`;
+  STARTS.forEach(st=>{const a=Math.max(d0,st+19),b=Math.min(TODAY,st+27);if(b<a)return;
+    s+=`<rect x="${(x(a)-dw/2).toFixed(1)}" y="${TOP}" width="${((b-a+1)*dw).toFixed(1)}" height="${y-TOP}" fill="#9a6bc0" fill-opacity=".11" rx="4"/>`;
+    if(b-a>=6)s+=`<text class="axisTxt" x="${(x(a)-dw/2+3).toFixed(1)}" y="14">late luteal</text>`});
+  lanes.forEach((k,i)=>{if(i)s+=`<line x1="0" x2="${W}" y1="${rows[k].y}" y2="${rows[k].y}" stroke="rgba(30,26,34,.06)"/>`});
+  lanes.forEach(k=>{const{y:ry,h:rh}=rows[k],cy=ry+rh/2;
+    if(k==='cyc')STARTS.forEach(st=>{for(let c=1;c<=5;c++){const d=st+c-1;if(d<d0||d>TODAY)continue;s+=`<rect x="${(x(d)-dw/2+1).toFixed(1)}" y="${cy-6}" width="${(dw-2).toFixed(1)}" height="12" rx="3" fill="#9a6bc0"/>`}
+      const ov=st+13;if(ov>=d0&&ov<=TODAY)s+=`<circle cx="${x(ov).toFixed(1)}" cy="${cy}" r="4" fill="none" stroke="#9a6bc0" stroke-width="2"/>`});
+    if(k==='lab'){const days={};E.filter(e=>e.type==='lab'&&inR(e)).forEach(e=>(days[e.d]=days[e.d]||[]).push(e.code||e.name));
+      Object.entries(days).forEach(([d,codes])=>{s+=`<circle cx="${x(+d).toFixed(1)}" cy="${cy-5}" r="5.5" fill="#16917f" stroke="#FFFDF9" stroke-width="2"/><text class="axisTxt" x="${x(+d).toFixed(1)}" y="${cy+14}" text-anchor="middle">${esc(codes.slice(0,2).join('·'))}</text>`})}
+    if(k==='sym'){const days={};E.filter(e=>e.type==='sym'&&inR(e)).forEach(e=>(days[e.d]=days[e.d]||[]).push(e));
+      Object.entries(days).forEach(([d,l])=>{l.sort((a,b)=>(b.name==='Fatigue')-(a.name==='Fatigue'));l.slice(0,3).forEach((e,i)=>{s+=`<circle cx="${x(+d).toFixed(1)}" cy="${cy+12-i*12}" r="${(3+e.sev*.28).toFixed(1)}" fill="#c4614f" fill-opacity="${e.name==='Fatigue'?1:.45}" stroke="#FFFDF9" stroke-width="2"/>`})})}
+    if(k==='slp'){const base=ry+rh-6,k2=(rh-12)/5;
+      E.filter(e=>e.type==='slp'&&inR(e)).forEach(e=>{const bh=Math.max(2,(Math.min(9,e.h)-4)*k2);s+=`<path d="${barP(x(e.d)-dw/2+1,base-bh,dw-2,bh,2)}" fill="#4f79b8" fill-opacity="${e.h<6.5?1:.4}"/>`});
+      const y7=base-3*k2;s+=`<line x1="0" x2="${W}" y1="${y7.toFixed(1)}" y2="${y7.toFixed(1)}" stroke="rgba(30,26,34,.14)"/><text class="axisTxt" x="${W-4}" y="${(y7-3).toFixed(1)}" text-anchor="end">7h</text>`}
+    if(k==='med')E.filter(e=>e.type==='med'&&inR(e)).forEach(e=>{const mx=x(e.d);s+=`<rect x="${(mx-6).toFixed(1)}" y="${cy-6}" width="12" height="12" rx="2" transform="rotate(45 ${mx.toFixed(1)} ${cy})" fill="#b08433" stroke="#FFFDF9" stroke-width="2"/><text class="lblTxt" x="${(mx+12).toFixed(1)}" y="${cy+4}">${esc(e.name.split(' ')[0])}</text>`});
+  });
+  let lastLx=-99;
+  for(let d=d0;d<=TODAY;d++){const dt=dateOf(d),lx=x(d)-dw/2;
+    if((dt.getDate()===1||(d===d0&&dt.getDate()<=25))&&lx-lastLx>44){s+=`<text class="axisTxt" x="${lx.toFixed(1)}" y="${H-6}">${MON[dt.getMonth()]} ${dt.getDate()}</text>`;lastLx=lx}
+    else if(dt.getDay()===1)s+=`<line x1="${x(d).toFixed(1)}" x2="${x(d).toFixed(1)}" y1="${y}" y2="${y+4}" stroke="rgba(30,26,34,.2)"/>`}
+  s+=`<line x1="${x(TODAY).toFixed(1)}" x2="${x(TODAY).toFixed(1)}" y1="${TOP-4}" y2="${y}" stroke="rgba(30,26,34,.5)" stroke-width="1.5"/><text class="lblTxt" x="${(x(TODAY)+dw/2).toFixed(1)}" y="${H-6}" text-anchor="end">Today</text>`;
+  s+=`<rect id="xhBand" y="${TOP}" width="${dw.toFixed(1)}" height="${y-TOP}" fill="rgba(90,61,110,.09)" rx="3" style="pointer-events:none"/></svg>`;
+  sc.innerHTML=s;
+  $('#laneLabels').innerHTML=lanes.map(k=>`<div class="laneLabel" style="top:${rows[k].y+rows[k].h/2-14}px" title="${T[k].name}"><span style="background:${T[k].hex}">${ic(T[k].icon)}</span></div>`).join('');
+  $('#laneLabels').style.height=H+'px';
+  if(S.sel<d0)S.sel=TODAY;
+  const band=$('#xhBand'),setX=d=>band.setAttribute('x',(x(d)-dw/2).toFixed(1));setX(S.sel);
+  const svg=$('#laneSvg'),dAt=ev=>{const r=svg.getBoundingClientRect();return Math.max(d0,Math.min(TODAY,d0+Math.floor((ev.clientX-r.left-6)/dw)))};
+  svg.addEventListener('pointermove',ev=>{if(ev.pointerType!=='mouse')return;const d=dAt(ev);if(d!==S.hover){S.hover=d;setX(d);readout(d)}});
+  svg.addEventListener('pointerleave',()=>{S.hover=null;setX(S.sel);readout(S.sel)});
+  svg.addEventListener('click',ev=>{const d=dAt(ev);S.sel=d;setX(d);readout(d);buzz(5)});
+  requestAnimationFrame(()=>{sc.scrollLeft=sc.scrollWidth});
+}
+function readout(d){
+  const c=cd(d),ev=E.filter(e=>e.d===d).sort((a,b)=>ORDER.indexOf(a.type)-ORDER.indexOf(b.type));
+  $('#readout').innerHTML=`<div class="roHead"><b>${fmt(d)}</b> · Cycle day ${c} · ${phase(c)}${d===TODAY?' · Today':''}</div><div class="roItems">${ev.length?ev.map(e=>`<button class="roItem" onclick="openEvent('${e.id}')"><span class="d" style="background:${T[e.type].hex}">${ic(T[e.type].icon)}</span>${esc(evLabel(e))}</button>`).join(''):'<span class="small">Nothing logged this day. Tap another day on the timeline.</span>'}</div>`;
+}
+function nice(lo,hi,n=3){const span=hi-lo||1,s0=span/(n-1),mag=Math.pow(10,Math.floor(Math.log10(s0))),f=s0/mag,step=(f<1.5?1:f<3?2:f<7?5:10)*mag;const a=Math.floor(lo/step)*step,b=Math.ceil(hi/step)*step,out=[];for(let v=a;v<=b+1e-9;v+=step)out.push(+v.toFixed(6));return out}
+const HORM=[['E2','Estradiol','pg/mL'],['P4','Progesterone','ng/mL'],['TSH','TSH','mIU/L']];
+function renderHormones(){
+  const view=S.hview||'chart';
+  $$('#hormoneView button').forEach(b=>{b.classList.toggle('on',b.dataset.v===view);b.onclick=()=>{S.hview=b.dataset.v;buzz(4);renderHormones()}});
+  const labs=E.filter(e=>e.type==='lab').sort((a,b)=>a.d-b.d);
+  if(view==='table'){$('#hormones').innerHTML=`<table class="tbl"><thead><tr><th>Date</th><th>Day</th><th>Test</th><th style="text-align:right">Value</th></tr></thead><tbody>${labs.map(e=>`<tr><td>${fmt(e.d)}</td><td>${cd(e.d)}</td><td>${esc(e.name)}</td><td style="text-align:right">${e.v} ${esc(e.u)}</td></tr>`).join('')}</tbody></table>`;return}
+  $('#hormones').innerHTML=HORM.map(([code,name,u])=>{
+    const p=labs.filter(e=>e.code===code);if(!p.length)return'';
+    const W=320,H=88,L=34,Rr=10,Tp=8,B=18,vs=p.map(e=>e.v),tk=nice(Math.min(...vs)*.85,Math.max(...vs)*1.1),lo=tk[0],hi=tk[tk.length-1];
+    const X=d=>L+(d/TODAY)*(W-L-Rr),Y=v=>Tp+(1-(v-lo)/(hi-lo))*(H-Tp-B);
+    let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${name} over 90 days">`;
+    tk.forEach(v=>s+=`<line x1="${L}" x2="${W-Rr}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="rgba(30,26,34,.07)"/><text class="axisTxt" x="${L-6}" y="${(Y(v)+3.5).toFixed(1)}" text-anchor="end" style="font-variant-numeric:tabular-nums">${v}</text>`);
+    [[0,'Jul'],[31,'Aug'],[62,'Sep']].forEach(([d,m])=>s+=`<text class="axisTxt" x="${X(d).toFixed(1)}" y="${H-3}">${m}</text>`);
+    s+=`<path d="${p.map((e,i)=>(i?'L':'M')+X(e.d).toFixed(1)+' '+Y(e.v).toFixed(1)).join('')}" fill="none" stroke="#16917f" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    p.forEach(e=>s+=`<circle cx="${X(e.d).toFixed(1)}" cy="${Y(e.v).toFixed(1)}" r="4.5" fill="#16917f" stroke="#FFFDF9" stroke-width="2"/><circle class="hit" data-id="${e.id}" cx="${X(e.d).toFixed(1)}" cy="${Y(e.v).toFixed(1)}" r="14" fill="transparent" style="cursor:pointer"/>`);
+    const last=p[p.length-1],d21=p.filter(e=>cd(e.d)===21);
+    const ro=d21.length>=2?`Day-21 samples: ${d21[0].v} → ${d21[d21.length-1].v} ${u}`:`${p[0].v} → ${last.v} ${u} since ${fmt(p[0].d)}${code==='TSH'?' · stable':''}`;
+    return`<div class="mini"><div class="top"><div class="h3">${name}</div><div class="val">${last.v}<small>${u}</small></div></div>${s}</svg><div class="ro">${ro}</div></div>`}).join('');
+  $$('#hormones .hit').forEach(c=>{const f=()=>{const e=E.find(x=>x.id===c.dataset.id);c.closest('.mini').querySelector('.ro').innerHTML=`<b>${fmt(e.d)}</b> · cycle day ${cd(e.d)} · <b>${e.v} ${esc(e.u)}</b> <button style="color:var(--plum);font-weight:600" onclick="openEvent('${e.id}')">details →</button>`};c.addEventListener('pointerenter',f);c.addEventListener('click',f)});
+}
+function renderFeed(){
+  const l=E.filter(e=>S.lanes.has(e.type)&&(S.range===90||e.d>=TODAY-29)).sort((a,b)=>b.d-a.d||ORDER.indexOf(a.type)-ORDER.indexOf(b.type));
+  $('#feedCount').textContent=l.length+' records';
+  $('#feed').innerHTML=l.slice(0,S.feedN).map((e,i)=>`<div class="feedItem" onclick="openEvent('${e.id}')" style="animation-delay:${Math.min(i,10)*30}ms"><div class="bub" style="background:${T[e.type].hex}">${ic(T[e.type].icon)}</div><div><div class="t">${esc(evLabel(e))}</div><div class="m">${fmt(e.d)} · day ${cd(e.d)} · ${esc(e.src)}</div></div>${ic('chev','width:18px;height:18px;color:var(--faint)')}</div>`).join('');
+  const more=$('#feedMore');more.style.display=l.length>S.feedN?'':'none';more.onclick=()=>{S.feedN+=15;renderFeed()};
+}
+
+/* ---------- event detail (provenance) ---------- */
+function openEvent(id){
+  const e=E.find(x=>x.id===id);if(!e)return;const c=cd(e.d),t=T[e.type];
+  const H=(S.analysis&&S.analysis.hypotheses)||(S.liveRun&&S.liveRun.hyps);
+  const used=H?AG.filter(a=>{const h=H[AG_OUT[a.k]]||H[a.k];return h&&(h.evidence_ids||[]).includes(id)}):agentDefs(stats()).filter(a=>a.ev.includes(id));
+  const sm=s=>`<small style="font-size:16px;color:var(--muted);font-weight:500"> ${s}</small>`;
+  const big=e.type==='lab'?`${e.v}${sm(esc(e.u))}`:e.type==='sym'?`${e.sev}${sm('/ 10')}`:e.type==='slp'?fmtH(e.h):esc(e.val);
+  openSheet(`<div class="row" style="gap:14px"><div class="bub" style="width:56px;height:56px;border-radius:19px;background:${t.hex}">${ic(t.icon)}</div><div><div class="eyebrow">${t.label}</div><div class="h2">${esc(e.name)}</div></div></div>
+  <div style="font-size:42px;font-weight:300;margin:14px 0 4px;letter-spacing:-.03em">${big}</div>
+  ${e.note?`<div class="note" style="margin-top:10px">${ic('doc')}<div>${esc(e.note)}</div></div>`:''}
+  <div class="kv"><div><span>Date</span><b>${fmt(e.d)}, 2026</b></div><div><span>Cycle</span><b>Day ${c} · ${phase(c)}</b></div><div><span>Source</span><b>${esc(e.src)}</b></div><div><span>Record ID</span><b style="font-family:ui-monospace,Menlo,monospace;font-size:13px">${esc(e.id)}</b></div></div>
+  <div class="eyebrow" style="margin:18px 0 8px">Cited as evidence by</div>
+  <div class="evChips" style="margin:0">${used.length?used.map(a=>`<span class="evChip"><span class="sw" style="background:${T[a.k].hex}"></span>${a.name}</span>`).join(''):'<span class="small">Not cited by an agent yet. It still counts toward pattern strength.</span>'}</div>
+  <button class="btn ghost block mt16" onclick="closeSheet()">Done</button>`);
+}
+
+/* ---------- logging ---------- */
+const ANALYTES=[['Estradiol','E2','pg/mL','120'],['Progesterone','P4','ng/mL','5.2'],['TSH','TSH','mIU/L','2.1'],['Ferritin','FER','ng/mL','40'],['Testosterone','TT','ng/dL','35']];
+const sevFace=s=>s<=2?'🙂':s<=4?'😕':s<=6?'😣':s<=8?'😫':'🥵';
+let uidN=0;
+function openLog(){
+  openSheet(`<div class="eyebrow">Add to your story</div><div class="h2" style="margin-top:4px">What do you want to <em>log?</em></div><p class="small" style="margin-top:6px">Every record becomes dated evidence the agents can reason over.</p>
+  <div class="tiles">${[['sym','Symptom','severity'],['slp','Sleep','hours'],['cyc','Period','flow'],['lab','Lab value','value + unit'],['med','Medication','change'],['scan','Scan report','auto-extract']].map(([k,n,s])=>{const sc=k==='scan';return`<button class="tile" onclick="logForm('${k}')"><span class="bub${sc?' iri':''}" style="${sc?'':'background:'+T[k].hex}">${ic(sc?'scan':T[k].icon)}</span>${n}<small>${s}</small></button>`}).join('')}</div>`);
+}
+function logForm(k){
+  const head=(title,sub)=>`<div class="row" style="gap:12px"><button class="backBtn" onclick="swapSheetLog()" aria-label="Back">${ic('back')}</button><div><div class="eyebrow">${sub}</div><div class="h2">${title}</div></div></div>`;
+  if(k==='sym'){S.lf={name:'Fatigue',sev:6};swapSheet(head('How do you feel?','Symptom')+`<div class="chips mt16" id="lfChips">${TAGS.map(t=>`<button class="chip ${t==='Fatigue'?'on':''}" onclick="lfPick(this,'${t}')">${t}</button>`).join('')}</div>
+    <div class="energy mt16"><div class="face" id="lfFace">${sevFace(6)}</div><div style="flex:1"><div class="eLabel">Severity <span id="lfSev">6 / 10</span></div><input type="range" class="slider" min="1" max="10" value="6" id="lfRange" aria-label="Severity" style="background:linear-gradient(90deg,#f3dcd5,#e3a596,#c4614f)"></div></div>
+    <button class="btn primary block mt16" onclick="saveLog('sym',this)">Add to timeline · +10 XP</button>`);
+    const r=$('#lfRange');r.oninput=()=>{S.lf.sev=+r.value;$('#lfSev').textContent=r.value+' / 10';const f=$('#lfFace');f.textContent=sevFace(S.lf.sev);replay(f,'bump');buzz(4)}}
+  if(k==='slp'){S.lf={h:7};swapSheet(head('How did you sleep?','Sleep · last night')+`<div class="stepper mt16"><button class="stepBtn" onclick="lfSleep(-.5)" aria-label="Less">−</button><div class="stepVal" id="lfH">${fmtH(7)}<small>${sleepWord(7)}</small></div><button class="stepBtn" onclick="lfSleep(.5)" aria-label="More">+</button></div><button class="btn primary block mt16" onclick="saveLog('slp',this)">Add to timeline · +15 XP</button>`)}
+  if(k==='cyc'){S.lf={name:'Spotting'};swapSheet(head('Any bleeding today?','Cycle')+`<div class="chips mt16">${['Spotting','Light flow','Medium flow','Heavy flow'].map((t,i)=>`<button class="chip ${i?'':'sel'}" onclick="lfSel(this,'${t}')">${t}</button>`).join('')}</div><p class="small mt12">Hormony uses this to refine your cycle-phase estimate.</p><button class="btn primary block mt16" onclick="saveLog('cyc',this)">Add to timeline · +10 XP</button>`)}
+  if(k==='lab'){S.lf={i:0};swapSheet(head('Add a lab value','Lab result')+`<div class="chips mt16">${ANALYTES.map((a,i)=>`<button class="chip ${i?'':'sel'}" onclick="lfAn(this,${i})">${a[0]}</button>`).join('')}</div><div class="field"><label id="lfUnit">Value · ${ANALYTES[0][2]}</label><input class="inp" id="lfVal" type="number" inputmode="decimal" step="any" placeholder="e.g. ${ANALYTES[0][3]}"></div><button class="btn primary block mt16" onclick="saveLog('lab',this)">Add to timeline · +25 XP</button>`)}
+  if(k==='med'){S.lf={chg:'Started'};swapSheet(head('Medication change','Medication')+`<div class="field"><label>Medication</label><input class="inp" id="lfMed" placeholder="e.g. Vitamin D 1000 IU" maxlength="60"></div><div class="chips mt12">${['Started','Stopped','Dose change','Timing change'].map((t,i)=>`<button class="chip ${i?'':'sel'}" onclick="lfSel(this,'${t}','chg')">${t}</button>`).join('')}</div><button class="btn primary block mt16" onclick="saveLog('med',this)">Add to timeline · +10 XP</button>`)}
+  if(k==='scan')scanFlow();
+}
+function swapSheetLog(){S.scanRun++;const b=$('#sheet .sheetBody');if(b)b.remove();openLog()}
+function lfPick(b,t){$$('#lfChips .chip').forEach(c=>c.classList.remove('on'));b.classList.add('on');S.lf.name=t;buzz(4)}
+function lfSel(b,v,key='name'){b.parentElement.querySelectorAll('.chip').forEach(c=>c.classList.remove('sel'));b.classList.add('sel');S.lf[key]=v;buzz(4)}
+function lfAn(b,i){lfSel(b,i,'i');const a=ANALYTES[i];$('#lfUnit').textContent='Value · '+a[2];$('#lfVal').placeholder='e.g. '+a[3]}
+function lfSleep(dv){S.lf.h=Math.max(3,Math.min(11,S.lf.h+dv));const v=$('#lfH');v.innerHTML=fmtH(S.lf.h)+`<small>${sleepWord(S.lf.h)}</small>`;replay(v);buzz(4)}
+function saveLog(k,btn){
+  let e=null,gain=10;
+  if(k==='sym')e={type:'sym',name:S.lf.name,sev:S.lf.sev,val:S.lf.sev+'/10'};
+  if(k==='slp'){gain=15;const sd=TODAY-1,ex=E.find(x=>x.type==='slp'&&x.d===sd);S.sleepH=S.lf.h;
+    if(ex){ex.h=S.lf.h;ex.val=S.lf.h.toFixed(1)+' h';ex.src='Manual entry'}else e={type:'slp',name:'Sleep',h:S.lf.h,val:S.lf.h.toFixed(1)+' h',d:sd}}
+  if(k==='cyc')e={type:'cyc',name:S.lf.name,val:'Cycle day '+cd(TODAY)};
+  if(k==='lab'){const a=ANALYTES[S.lf.i],v=parseFloat($('#lfVal').value);if(!(v>0)){toast('Enter a value first','help');$('#lfVal').focus();return}
+    gain=25;e={type:'lab',name:a[0],code:a[1],v,u:a[2],val:v+' '+a[2]}}
+  if(k==='med'){const n=$('#lfMed').value.trim();if(!n){toast('Add the medication name','help');$('#lfMed').focus();return}e={type:'med',name:n,val:S.lf.chg}}
+  if(e){e.id=`USR-${md(TODAY)}-${++uidN}`;if(e.d===undefined)e.d=TODAY;e.src='Manual entry';e.note=e.note||'';addE(e)}
+  if(API.on){const body=k==='sym'?{type:'symptom',name:S.lf.name,severity:S.lf.sev,code:SYMCODE[S.lf.name]||null}
+    :k==='slp'?{type:'sleep',name:'Sleep',value:S.lf.h,unit:'h',date:isoOf(TODAY-1)}
+    :k==='cyc'?{type:'cycle',name:S.lf.name}
+    :k==='lab'?{type:'lab',name:e.name,code:e.code,value:e.v,unit:e.u}
+    :{type:'med',name:e.name,code:e.val};
+    body.date=body.date||isoOf(TODAY);body.source='Manual entry';persist(body).then(syncLedger)}
+  closeSheet();xp(gain);confetti(50,.5,.55);toast('Added to your timeline');afterData();
+  if(k==='slp')bumpEvidence('sleep');
+  if(k==='sym'&&S.lf.name==='Fatigue')bumpEvidence('energy');
+}
+async function scanFlow(){
+  const vals=[['Estradiol','E2',138,'pg/mL'],['Progesterone','P4',5.1,'ng/mL'],['TSH','TSH',2.3,'mIU/L']];
+  const already=E.some(e=>e.d===TODAY&&e.type==='lab'&&e.src==='Scanned lab report');
+  swapSheet(`<div class="row" style="gap:12px"><button class="backBtn" onclick="swapSheetLog()" aria-label="Back">${ic('back')}</button><div><div class="eyebrow">Scan report</div><div class="h2">Reading your <em>lab report</em></div></div></div>
+  <div class="scanDoc"><div class="sdHead"><b>City Diagnostics</b><span>Collected ${fmt(TODAY)}, 2026 · 08:10</span></div>
+  ${vals.map((v,i)=>`<div class="sdRow" id="sd${i}"><span>${v[0]}</span><span class="dots2"></span><b>${v[2]} ${v[3]}</b></div>`).join('')}
+  <div class="sdRow faint"><span>Reference ranges</span><span class="dots2"></span><b>see lab</b></div><div class="laser"></div></div>
+  <div class="small mt12" id="scanMsg">Finding dates, analytes and units…</div><div id="scanOut" class="evChips"></div>
+  <button class="btn primary block mt16" id="scanAdd" disabled onclick="saveScan()">${already?'Already in your timeline':'Add 3 values · +40 XP'}</button>`);
+  const my=++S.scanRun;
+  for(let i=0;i<3;i++){await sleep(RM?50:750);if(my!==S.scanRun)return;$('#sd'+i).classList.add('hit');const v=vals[i];
+    $('#scanOut').insertAdjacentHTML('beforeend',`<span class="evChip" style="animation:pop .5s var(--spring) both"><span class="sw" style="background:#16917f"></span>${v[0]} ${v[2]} ${v[3]}</span>`);buzz(6)}
+  await sleep(RM?50:450);if(my!==S.scanRun)return;
+  $('#scanMsg').innerHTML=`<b style="color:var(--ink)">✓ 3 values found</b> · dated ${fmt(TODAY)} · cycle day ${cd(TODAY)} · source attached`;
+  S.scanVals=vals;if(!already)$('#scanAdd').disabled=false;
+}
+function saveScan(){
+  if(E.some(e=>e.d===TODAY&&e.type==='lab'&&e.src==='Scanned lab report'))return toast('This report is already in your timeline','help');
+  S.scanVals.forEach(([name,code,v,u])=>addE({id:`LAB-${md(TODAY)}-${code}`,d:TODAY,type:'lab',name,code,v,u,val:v+' '+u,src:'Scanned lab report',note:''}));
+  if(API.on)Promise.all(S.scanVals.map(([name,code,v,u])=>persist({type:'lab',name,code,value:v,unit:u,date:isoOf(TODAY),source:'Scanned lab report'}))).then(syncLedger);
+  closeSheet();xp(40);confetti(90,.5,.5);toast('3 lab values added');earn('scan');afterData();
+}
+function afterData(){renderRing();renderStats();if(S.current==='timeline')renderTimeline()}
+
+/* ---------- ASK ---------- */
+const SUGS=['Why have my fatigue episodes increased over the last two cycles?','Is my sleep changing with my cycle?','What changed after I started spironolactone?'];
+function openAsk(q){
+  openSheet(`<div class="eyebrow">Ask Hormony</div><div class="h2" style="margin-top:4px">What do you want to <em>understand?</em></div>
+  <textarea class="askBox" id="askQ" rows="3" maxlength="200">${esc(q||SUGS[0])}</textarea>
+  <div class="chips">${['Fatigue','Sleep × cycle','Medication'].map((l,i)=>`<button class="chip" onclick="$('#askQ').value=SUGS[${i}];buzz(4)">${l}</button>`).join('')}</div>
+  <div class="card mt16" style="margin-bottom:0;padding:14px"><div class="row" style="gap:6px">${AG.map(a=>agAv(a,34)).join('')}<div class="small" style="margin-left:6px">Three specialists analyze <b style="color:var(--ink)">independently</b>, then a Critic reviews where they disagree.</div></div></div>
+  <button class="btn primary block mt16" onclick="startDebate($('#askQ').value)">${ic('sparkle')}Start analysis</button>`);
+}
+function askDefault(){startDebate(SUGS[0])}
+
+/* ---------- DEBATE: independent agents → discordance → debate → critic ---------- */
+let runId=0;
+const SHORT={lab:'Lab',sym:'Symptom',cyc:'Cycle'};
+const PAIRS=[['lab','cyc','ok','Compatible','Progesterone falls in the luteal phase, so both point toward cycle timing.'],['sym','cyc','no','Conflict','Medication change vs. cycle timing as the leading explanation.'],['lab','sym','no','Conflict','Lab change vs. medication change.']];
+const RESOLVE=['Repeat day-21 progesterone next cycle','Log energy on cycle days 6–13, outside the late-luteal window','Ask your clinician whether iron or B12 testing makes sense'];
+function chatScript(st){const off=st.off;return[
+  ['cyc',`${st.late} of ${st.fatN} fatigue logs land on days 20–28, in all ${st.cyclesWith} cycles. Timing is the most consistent signal here.`],
+  ['sym',`Consistent, yes, but it doesn't explain the <b>increase</b>. After ${fmt(MED_DAY)}, fatigue also shows up on ${list(off.map(e=>fmt(e.d)))} (cycle days ${list(off.map(e=>cd(e.d)))}), outside that window.`],
+  ['lab','Day-21 progesterone dropped from 7.9 to 4.2 ng/mL. That\'s a luteal-phase measurement, so it could connect both of your views.'],
+  ['cyc','That\'s only 2 samples, though. One low reading can\'t establish a trend.'],
+  ['lab','Agreed. I\'m lowering my confidence. Also flagging that iron and B12 were never measured, so they can\'t be ruled out.'],
+  ['sym',`One more thing: on comparable nights (outside days 20–28), average sleep fell from ${st.slBefore} h to ${st.slAfter} h after ${fmt(MED_DAY)}. None of us owns that factor.`]
+]}
+function zig(x1,y1,x2,y2,n=9,amp=5){const dx=x2-x1,dy=y2-y1,d=Math.hypot(dx,dy),nx=-dy/d,ny=dx/d,p=[];for(let i=0;i<=n;i++){const t=i/n,o=(i===0||i===n)?0:(i%2?amp:-amp);p.push((x1+dx*t+nx*o).toFixed(1)+','+(y1+dy*t+ny*o).toFixed(1))}return p.join(' ')}
+function discordanceHTML(act){
+  if(act.length<2)return`<div class="card"><div class="discHead" style="color:var(--muted)">${ic('help')}Discordance check skipped</div><p class="p mt8">Only one agent is active, so there is nothing to compare. Turn agents back on in Me.</p></div>`;
+  const ks=act.map(a=>a.k),pairs=PAIRS.filter(p=>ks.includes(p[0])&&ks.includes(p[1])),conflict=pairs.some(p=>p[2]==='no');
+  let tri='';
+  if(act.length===3){
+    const pos={sym:[150,40],lab:[56,146],cyc:[244,146]};
+    let s='<svg viewBox="0 0 300 190" role="img" aria-label="Agreement map between agents">';
+    pairs.forEach(([a,b,kind])=>{const[x1,y1]=pos[a],[x2,y2]=pos[b];
+      s+=kind==='ok'?`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#0ca30c" stroke-width="3" stroke-linecap="round"/>`:`<polyline class="zigPulse" points="${zig(x1,y1,x2,y2)}" fill="none" stroke="#fab219" stroke-width="2.5" stroke-linejoin="round"/>`});
+    s+=`<text class="lblTxt" x="150" y="176" text-anchor="middle" style="fill:var(--ink2)">compatible</text><text class="lblTxt" x="76" y="96" text-anchor="middle" style="fill:var(--ink2)">conflict</text><text class="lblTxt" x="224" y="96" text-anchor="middle" style="fill:var(--ink2)">conflict</text>`;
+    act.forEach(a=>{const[x,y]=pos[a.k];s+=`<circle cx="${x}" cy="${y}" r="22" fill="${T[a.k].hex}" stroke="#FFFDF9" stroke-width="3"/><svg x="${x-11}" y="${y-11}" width="22" height="22" viewBox="0 0 24 24" style="${ICON_INLINE}">${IC[a.icon]}</svg><text class="lblTxt" x="${x}" y="${a.k==='sym'?y+38:y+38}" text-anchor="middle" style="fill:var(--ink);font-size:11.5px">${a.name}</text>`});
+    tri=`<div class="tri">${s}</svg></div>`;
+  }
+  return`<div class="card disc"><div class="discHead">${ic('alert')}${conflict?'Discordance detected':'Partial agreement'}</div>
+  <div class="h3 mt8">${act.length} agents · ${conflict?`${act.length} different leading explanations`:'compatible explanations'}</div>${tri}
+  <div class="pair"><span class="tag all">${ic('check','width:13px;height:13px')}${act.length}/${act.length} agree</span><div>Fatigue increased over the last two cycles.</div></div>
+  ${pairs.map(p=>`<div class="pair"><span class="tag ${p[2]}">${ic(p[2]==='ok'?'check':'alert','width:13px;height:13px')}${p[3]}</span><div><b>${SHORT[p[0]]} × ${SHORT[p[1]]}</b><br><span class="small">${p[4]}</span></div></div>`).join('')}
+  <p class="small mt8" style="margin-bottom:0">Instead of averaging the answers, Hormony sends the disagreement to a debate and a critic.</p></div>`;
+}
+function verdictHTML(act){
+  const paused=AG.filter(a=>S.paused.has(a.k)),B=t=>`<b style="color:var(--ink)">${t}</b>`;
+  return`<div class="card verdict iriCard"><div class="row" style="gap:12px"><div class="av critic">${ic('scale')}</div><div><div class="eyebrow" style="color:var(--plum)">Critic verdict</div><div class="h3">No single cause is supported.</div></div></div>
+  <p class="p mt12">${act.length===3?`Three factors are temporally associated with the rise in fatigue. ${B('Cycle timing')} is the most consistent signal. The ${B('medication change')} best matches the increase in frequency. The ${B('progesterone change')} is real but under-sampled. ${B('Sleep')} is a confounder no agent owned.`:`With ${act.length} of 3 agents active, the evidence points to several associated factors but no single cause.`}${paused.length?` <i>(${paused.map(a=>a.name).join(' and ')} paused, so ${paused.length>1?'their':'its'} data was not considered.)</i>`:''}</p>
+  ${act.length?`<div class="eyebrow" style="margin:16px 0 4px">Confidence adjustments</div>`:''}
+  ${act.map(a=>`<div class="adj"><div class="d" style="background:${T[a.k].hex}">${ic(a.icon)}</div><div><div class="n">${a.name}</div><div class="w">${a.why}</div></div><div class="v"><span class="was">${a.conf.toFixed(2)}</span><span class="${a.adj>a.conf?'up':'dn'}">${a.adj>a.conf?'▲':'▼'} ${a.adj.toFixed(2)}</span></div></div>`).join('')}
+  <div class="eyebrow" style="margin:16px 0 0">What would resolve it</div><ul class="list">${RESOLVE.map(r=>`<li>${r}</li>`).join('')}</ul>
+  <button class="btn gold block mt16" onclick="revealInsight()">${ic('sparkle')}Reveal your insight</button></div>`;
+}
+async function typeInto(el,text,alive){
+  el.classList.add('caret');
+  if(!S.fast&&!RM)for(let i=1;i<=text.length;i+=2){if(!alive()||S.fast)break;el.textContent=text.slice(0,i);await sleep(20)}
+  el.textContent=text;el.classList.remove('caret');
+}
+async function runAgent(a,delay,alive,w,follow){
+  await w(delay);if(!alive())return;
+  const card=$('#ag-'+a.k),stEl=$('#st-'+a.k),th=$('#th-'+a.k);
+  if(S.paused.has(a.k)){card.classList.add('done');stEl.textContent='Paused';th.innerHTML='<div class="thought">Access paused by you in Me. This agent read nothing.</div>';return}
+  card.classList.add('live');stEl.textContent='Thinking';
+  for(const line of a.thoughts){if(!alive())return;const el=document.createElement('div');el.className='thought';th.appendChild(el);await typeInto(el,line,alive);await w(240);follow()}
+  if(!alive())return;
+  $('#hy-'+a.k).innerHTML=`<div class="hyp"><div class="lbl">Hypothesis</div><p>${a.hyp}</p><div class="conf"><span class="small">Confidence</span><div class="bar"><i id="cb-${a.k}"></i></div><b id="cv-${a.k}">0.00</b></div>
+  <div class="evChips">${a.ev.map(id=>{const e=E.find(x=>x.id===id);return`<button class="evChip" onclick="openEvent('${id}')"><span class="sw" style="background:${T[e?e.type:'lab'].hex}"></span>${id}</button>`}).join('')}</div></div>`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{const b=$('#cb-'+a.k);if(b)b.style.width=a.conf*100+'%'}));
+  countUp($('#cv-'+a.k),a.conf,S.fast?10:1200,2);
+  card.classList.remove('live');card.classList.add('done');stEl.textContent='Done ✓';buzz(8);follow();
+  await w(350);
+}
+function startDebate(q){return API.on?startDebateLive(q):startDebateDemo(q)}
+function engineNote(llm){
+  if(llm==='demo')return`<div class="note mt12" style="margin-bottom:0">${ic('help')}<div>Offline reasoning engine: the agents' wording is assembled from your facts by rules, not by a language model. Add an OpenRouter or Anthropic key to the backend for live reasoning.</div></div>`;
+  const[prov,...rest]=String(llm).split(':'),model=rest.join(':');
+  return`<div class="small mt8">Reasoning engine · <b style="color:var(--ink)">${esc(model||prov)}</b>${prov==='openrouter'?' via OpenRouter':prov==='anthropic'?' (Anthropic)':''}</div>`;
+}
+const FACTOR={cycle_timing:'cycle timing',medication:'medication change',lab_change:'lab change',sleep:'sleep',other:'other factors',insufficient_data:'insufficient data'};
+const cap=t=>t?t[0].toUpperCase()+t.slice(1):t;
+function pairNote(a,b,rel){
+  const H=(S.liveRun&&S.liveRun.hyps)||{},fa=FACTOR[H[a]&&H[a].leading_factor]||'one factor',fb=FACTOR[H[b]&&H[b].leading_factor]||'another';
+  const known=PAIRS.find(p=>(p[0]===a&&p[1]===b)||(p[0]===b&&p[1]===a));
+  if(known&&rel==='compatible'&&known[2]==='ok')return known[4];
+  return rel==='conflict'?`${cap(fa)} vs. ${fb} as the leading explanation.`:rel==='agree'?`Both point to ${fa}.`:`${cap(fa)} and ${fb} can both be true at once.`;
+}
+function discordanceLiveHTML(evt){
+  const pairs=(evt.pairs||[]).map(p=>({a:AG_IN[p.a]||p.a,b:AG_IN[p.b]||p.b,rel:p.relation,note:p.note}));
+  const ks=[...new Set(pairs.flatMap(p=>[p.a,p.b]))],act=AG.filter(a=>ks.includes(a.k));
+  if(act.length<2)return discordanceHTML(act);
+  const conflict=!!evt.conflict,H=(S.liveRun&&S.liveRun.hyps)||{};
+  const distinct=new Set(act.map(a=>H[a.k]&&H[a.k].leading_factor).filter(Boolean)).size||act.length;
+  let tri='';
+  if(act.length===3){
+    const pos={sym:[150,40],lab:[56,146],cyc:[244,146]};
+    let sv='<svg viewBox="0 0 300 190" role="img" aria-label="Agreement map between agents">';
+    pairs.forEach(p=>{const[x1,y1]=pos[p.a],[x2,y2]=pos[p.b],mx=(x1+x2)/2,my=(y1+y2)/2,dx=mx-150,dy=my-110,dl=Math.hypot(dx,dy)||1;
+      sv+=p.rel==='conflict'?`<polyline class="zigPulse" points="${zig(x1,y1,x2,y2)}" fill="none" stroke="#fab219" stroke-width="2.5" stroke-linejoin="round"/>`:`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#0ca30c" stroke-width="3" stroke-linecap="round"/>`;
+      p.lx=mx+dx/dl*24;p.ly=my+dy/dl*24+4});
+    pairs.forEach(p=>{sv+=`<text class="lblTxt" x="${p.lx.toFixed(1)}" y="${p.ly.toFixed(1)}" text-anchor="middle" style="fill:var(--ink2)">${p.rel==='conflict'?'conflict':p.rel==='agree'?'agree':'compatible'}</text>`});
+    act.forEach(a=>{const[x,y]=pos[a.k];sv+=`<circle cx="${x}" cy="${y}" r="22" fill="${T[a.k].hex}" stroke="#FFFDF9" stroke-width="3"/><svg x="${x-11}" y="${y-11}" width="22" height="22" viewBox="0 0 24 24" style="${ICON_INLINE}">${IC[a.icon]}</svg><text class="lblTxt" x="${x}" y="${y+38}" text-anchor="middle" style="fill:var(--ink);font-size:11.5px">${a.name}</text>`});
+    tri=`<div class="tri">${sv}</svg></div>`;
+  }
+  return`<div class="card disc"><div class="discHead">${ic('alert')}${conflict?'Discordance detected':'Partial agreement'}</div>
+  <div class="h3 mt8">${act.length} agents · ${conflict?`${distinct} different leading explanations`:'compatible explanations'}</div>${tri}
+  <div class="pair"><span class="tag all">${ic('check','width:13px;height:13px')}${act.length}/${act.length} agree</span><div>Fatigue increased over the last two cycles.</div></div>
+  ${pairs.map(p=>`<div class="pair"><span class="tag ${p.rel==='conflict'?'no':'ok'}">${ic(p.rel==='conflict'?'alert':'check','width:13px;height:13px')}${cap(p.rel||'')}</span><div><b>${SHORT[p.a]} × ${SHORT[p.b]}</b><br><span class="small">${esc(p.note||pairNote(p.a,p.b,p.rel))}</span></div></div>`).join('')}
+  <p class="small mt8" style="margin-bottom:0">Instead of averaging the answers, Hormony sends the disagreement to a debate and a critic.</p></div>`;
+}
+function verdictLiveHTML(v){
+  const paused=AG.filter(a=>S.paused.has(a.k));
+  const adj=(v.adjustments||[]).map(x=>({a:AG.find(g=>g.k===AG_IN[x.agent]),before:+x.before||0,after:+x.after||0,reason:x.reason||''})).filter(x=>x.a);
+  const arrow=x=>Math.abs(x.after-x.before)<.005?'':x.after>x.before?'▲ ':'▼ ';
+  return`<div class="card verdict iriCard"><div class="row" style="gap:12px"><div class="av critic">${ic('scale')}</div><div><div class="eyebrow" style="color:var(--plum)">Critic verdict</div><div class="h3">${v.single_cause_supported?'One factor stands out.':'No single cause is supported.'}</div></div></div>
+  <p class="p mt12">${esc(v.summary||'')}${paused.length?` <i>(${paused.map(a=>a.name).join(' and ')} paused, so ${paused.length>1?'their':'its'} data was not considered.)</i>`:''}</p>
+  ${adj.length?`<div class="eyebrow" style="margin:16px 0 4px">Confidence adjustments</div>`:''}
+  ${adj.map(x=>`<div class="adj"><div class="d" style="background:${T[x.a.k].hex}">${ic(x.a.icon)}</div><div><div class="n">${x.a.name}</div><div class="w">${esc(x.reason)}</div></div><div class="v"><span class="was">${x.before.toFixed(2)}</span><span class="${x.after>x.before?'up':'dn'}">${arrow(x)}${x.after.toFixed(2)}</span></div></div>`).join('')}
+  ${(v.resolve_steps||[]).length?`<div class="eyebrow" style="margin:16px 0 0">What would resolve it</div><ul class="list">${v.resolve_steps.map(r=>`<li>${esc(r)}</li>`).join('')}</ul>`:''}
+  <button class="btn gold block mt16" onclick="revealInsight()">${ic('sparkle')}Reveal your insight</button></div>`;
+}
+function liveHyp(k,h){
+  const card=$('#ag-'+k);if(!card)return;const conf=+h.confidence||0;
+  $('#hy-'+k).innerHTML=`<div class="hyp"><div class="lbl">Hypothesis</div><p>${esc(h.claim||'')}</p><div class="conf"><span class="small">Confidence</span><div class="bar"><i id="cb-${k}"></i></div><b id="cv-${k}">0.00</b></div>
+  <div class="evChips">${(h.evidence_ids||[]).map(id=>{const sid=safeId(id),e=E.find(x=>x.id===id);return`<button class="evChip" onclick="openEvent('${sid}')"><span class="sw" style="background:${T[e?e.type:'lab'].hex}"></span>${sid}</button>`}).join('')}</div></div>`;
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{const b=$('#cb-'+k);if(b)b.style.width=conf*100+'%'}));
+  countUp($('#cv-'+k),conf,S.fast?10:1200,2);
+  card.classList.remove('live');card.classList.add('done');$('#st-'+k).textContent='Done ✓';buzz(8);
+}
+function debateFailed(q,err){
+  S.lastQ=q;$('#skipBtn').style.visibility='hidden';$('#stepLbl').textContent='Analysis interrupted';
+  $('#debateBody').insertAdjacentHTML('beforeend',`<div class="card disc" style="animation:none"><div class="discHead">${ic('alert')}Live analysis unavailable</div><p class="p mt8">${esc(String((err&&err.message)||err||'Unknown error').slice(0,180))}</p><div class="row mt12" style="gap:10px"><button class="btn primary" style="flex:1;padding:0 12px" onclick="startDebate(S.lastQ)">Try again</button><button class="btn ghost" style="flex:1;padding:0 12px" onclick="startDebateDemo(S.lastQ)">Watch demo</button></div></div>`);
+}
+async function startDebateLive(q){
+  q=(q||'').trim()||SUGS[0];
+  S.fast=false;go('debate');
+  const my=++runId,alive=()=>my===runId;
+  const w=ms=>sleep(S.fast||RM?Math.min(ms,25):ms);
+  const body=$('#debateBody'),skip=$('#skipBtn');body.innerHTML='';skip.style.visibility='visible';
+  $$('#steps span').forEach(x=>x.classList.remove('on'));
+  const done=new Set(),step=(i,t)=>{if(done.has(i))return;done.add(i);$$('#steps span')[i].classList.add('on');$('#stepLbl').textContent=`Step ${i+1} of 5 · ${t}`};
+  const follow=()=>{const sc=$('#s-debate');sc.scrollTo({top:sc.scrollHeight,behavior:S.fast||RM?'auto':'smooth'})};
+  const st=stats(),defs=agentDefs(st);
+  step(0,'Scoping your evidence ledger');
+  body.innerHTML=`<div class="card qCard iriCard"><div class="eyebrow">Your question</div><div class="q">${esc(q)}</div>
+  <div class="ledger">${[['cyc',st.cycN],['lab',st.labN],['sym',st.symN],['slp',st.slN],['med',st.medN]].map(([k,n])=>`<div><b id="lg-${k}" data-v="${n}">0</b><span><i style="background:${T[k].hex}"></i>${T[k].name}</span></div>`).join('')}</div>
+  <div class="small mt12" id="scopeMsg">Pulling records from the last 91 days…</div><div id="llmNote"></div></div>`;
+  let id;
+  try{id=(await API.post('/analyses',{patient_id:PID,question:q,active_agents:AG.filter(a=>!S.paused.has(a.k)).map(a=>AG_OUT[a.k])})).id}
+  catch(err){return debateFailed(q,err)}
+  if(!alive())return;
+  S.liveRun={id,hyps:{}};
+  // SSE pump. On a reconnect the server replays the run log from the start, so skip what was already delivered.
+  const queue=[];let wake=null,delivered=0,rx=0,finished=false;
+  const es=new EventSource(API.url(`/analyses/${encodeURIComponent(id)}/stream`));
+  es.onopen=()=>{rx=0};
+  es.onmessage=m=>{rx++;if(rx<=delivered)return;delivered++;try{queue.push(JSON.parse(m.data))}catch(_){}if(wake){const f=wake;wake=null;f()}};
+  es.onerror=()=>{if(finished||!alive())es.close()};
+  const next=async()=>{const t0=Date.now();while(!queue.length){if(!alive()||Date.now()-t0>180000)return null;await new Promise(r=>{wake=r;setTimeout(r,1000)})}return queue.shift()};
+  let cards=false;
+  const showCards=()=>{if(cards)return;cards=true;step(1,'Specialists analyzing independently');
+    body.insertAdjacentHTML('beforeend',defs.map(a=>`<div class="card agent" id="ag-${a.k}" style="--c:${T[a.k].hex}"><div class="aTop">${agAv(a,48)}<div><div class="aName">${a.name}</div><div class="aRole">${a.role}</div></div><div class="aState" id="st-${a.k}">${S.paused.has(a.k)?'Paused':'Queued'}</div></div><div class="thoughts" id="th-${a.k}"></div><div id="hy-${a.k}"></div></div>`).join(''));follow()};
+  try{for(;;){
+    const evt=await next();
+    if(!alive())return;
+    if(!evt)return debateFailed(q,new Error('The analysis stopped responding.'));
+    const k=AG_IN[evt.agent]||evt.agent;
+    if(evt.type==='step'&&evt.index===0&&evt.llm){S.liveRun.llm=evt.llm;$('#llmNote').innerHTML=engineNote(evt.llm)}
+    else if(evt.type==='ledger'){const c=evt.counts||{};let tot=0;
+      [['cyc','cycle'],['lab','lab'],['sym','symptom'],['slp','sleep'],['med','med']].forEach(([lk,ak])=>{const n=+c[ak]||0;tot+=n;const b=$('#lg-'+lk);if(b){b.dataset.v=n;countUp(b,n,S.fast?10:1200)}});
+      await w(1300);if(!alive())return;
+      $('#scopeMsg').innerHTML=`<b style="color:var(--ink)">${tot} records scoped.</b> Each agent sees only the data types it's allowed to read.`;await w(500)}
+    else if(evt.type==='thought'){showCards();const card=$('#ag-'+k);if(!card||S.paused.has(k))continue;   // never show a paused agent's factscard.classList.add('live');$('#st-'+k).textContent='Thinking';
+      const el=document.createElement('div');el.className='thought';$('#th-'+k).appendChild(el);await typeInto(el,evt.text||'',alive);await w(160);follow()}
+    else if(evt.type==='hypothesis'){showCards();S.liveRun.hyps[k]=evt;liveHyp(k,evt);follow();await w(450)}
+    else if(evt.type==='agent_skipped'){showCards();const card=$('#ag-'+k);
+      if(card){card.classList.add('done');$('#st-'+k).textContent='Paused';$('#th-'+k).innerHTML=`<div class="thought">${S.paused.has(k)?'Access paused by you in Me. This agent read nothing.':'Unavailable for this run. The others carried on without it.'}</div>`;
+        if(!S.paused.has(k))$('#st-'+k).textContent='Unavailable'}}
+    else if(evt.type==='discordance'){showCards();await w(400);step(2,'Discordance engine comparing conclusions');
+      body.insertAdjacentHTML('beforeend',discordanceLiveHTML(evt));buzz([20,30,20]);follow();await w(2200)}
+    else if(evt.type==='message'){step(3,'Agents debating the evidence');
+      if(!$('#chat'))body.insertAdjacentHTML('beforeend',`<div class="secTitle" style="margin-top:6px"><div class="h3">Debate</div><span class="small">${Object.keys(S.liveRun.hyps).length} agents</span></div><div id="chat"></div>`);
+      const a=AG.find(x=>x.k===k)||AG[0],m=document.createElement('div');m.className='msg';
+      m.innerHTML=`${agAv(a,36)}<div class="bubble"><div class="who">${a.name}</div><div class="typing"><i></i><i></i><i></i></div></div>`;
+      $('#chat').appendChild(m);follow();await w(850);if(!alive())return;
+      m.querySelector('.typing').outerHTML=`<div>${esc(evt.text||'')}</div>`;buzz(4);follow();await w(900)}
+    else if(evt.type==='verdict'){step(3,'No conflict to debate');step(4,'Reasoning critic reviewing');
+      const cm=document.createElement('div');cm.className='msg';
+      cm.innerHTML=`<div class="av critic">${ic('scale','width:18px;height:18px')}</div><div class="bubble"><div class="who">Reasoning Critic</div><div class="typing"><i></i><i></i><i></i></div></div>`;
+      ($('#chat')||body).appendChild(cm);follow();await w(1100);if(!alive())return;
+      cm.querySelector('.typing').outerHTML=`<div>Checking each hypothesis against the evidence ledger. Weighing sample sizes, repetition across cycles, and factors nobody claimed.</div>`;
+      await w(900);if(!alive())return;
+      S.liveRun.verdict=evt;body.insertAdjacentHTML('beforeend',verdictLiveHTML(evt));
+      (evt.adjustments||[]).forEach(x=>{const kk=AG_IN[x.agent],b=$('#cb-'+kk),v=$('#cv-'+kk);if(b)b.style.width=(+x.after*100)+'%';if(v)v.textContent=(+x.after).toFixed(2)});follow()}
+    else if(evt.type==='done'){finished=true;
+      try{S.analysis=Object.assign({id},await API.get(`/analyses/${encodeURIComponent(id)}`));G=null}catch(err){}
+      skip.style.visibility='hidden';$('#stepLbl').textContent='Analysis complete · uncertainty preserved';
+      if(!S.liveRun.verdict)body.insertAdjacentHTML('beforeend',`<button class="btn gold block mt16" onclick="revealInsight()">${ic('sparkle')}Reveal your insight</button>`);
+      const firstRun=!S.debated;S.debated=true;questDone('ask');earn('debate');
+      if(!S.unlocked){S.unlocked=true;S.evidence=100;S.need={energy:true,sleep:true};earn('pattern')}
+      if(firstRun)setTimeout(()=>{confetti(130,.5,.55);xp(50)},350);
+      return}
+    else if(evt.type==='error'){finished=true;return debateFailed(q,new Error(evt.message||'Analysis failed'))}
+  }}finally{es.close()}
+}
+async function startDebateDemo(q){
+  q=(q||'').trim()||SUGS[0];
+  S.fast=false;go('debate');
+  const my=++runId,alive=()=>my===runId;
+  const w=ms=>sleep(S.fast||RM?Math.min(ms,25):ms);
+  const body=$('#debateBody'),skip=$('#skipBtn');body.innerHTML='';skip.style.visibility='visible';
+  $$('#steps span').forEach(s=>s.classList.remove('on'));
+  const step=(i,t)=>{$$('#steps span')[i].classList.add('on');$('#stepLbl').textContent=`Step ${i+1} of 5 · ${t}`};
+  const follow=()=>{const sc=$('#s-debate');sc.scrollTo({top:sc.scrollHeight,behavior:S.fast||RM?'auto':'smooth'})};
+  const st=stats(),defs=agentDefs(st),act=defs.filter(a=>!S.paused.has(a.k));
+  const offTopic=!/fatigue|tired|energy|exhaust/i.test(q);
+
+  step(0,'Scoping your evidence ledger');
+  body.innerHTML=`<div class="card qCard iriCard"><div class="eyebrow">Your question</div><div class="q">${esc(q)}</div>
+  ${API.base?`<div class="note mt12" style="margin-bottom:0">${ic('help')}<div>Offline: this is the scripted demo analysis, not your live data.</div></div>`:offTopic?`<div class="note mt12" style="margin-bottom:0">${ic('help')}<div>In this demo the agents analyze the fatigue thread, the strongest pattern in your data.</div></div>`:''}
+  <div class="ledger">${[['cyc',st.cycN],['lab',st.labN],['sym',st.symN],['slp',st.slN],['med',st.medN]].map(([k,n])=>`<div><b data-v="${n}">0</b><span><i style="background:${T[k].hex}"></i>${T[k].name}</span></div>`).join('')}</div>
+  <div class="small mt12" id="scopeMsg">Pulling records from the last 91 days…</div></div>`;
+  $$('.ledger b').forEach(b=>countUp(b,+b.dataset.v,S.fast?10:1200));
+  await w(1500);if(!alive())return;
+  $('#scopeMsg').innerHTML=`<b style="color:var(--ink)">${st.cycN+st.labN+st.symN+st.slN+st.medN} records scoped.</b> Each agent sees only the data types it's allowed to read.`;
+  await w(700);if(!alive())return;
+
+  step(1,'Specialists analyzing independently');
+  body.insertAdjacentHTML('beforeend',defs.map(a=>`<div class="card agent" id="ag-${a.k}" style="--c:${T[a.k].hex}"><div class="aTop">${agAv(a,48)}<div><div class="aName">${a.name}</div><div class="aRole">${a.role}</div></div><div class="aState" id="st-${a.k}">${S.paused.has(a.k)?'Paused':'Queued'}</div></div><div class="thoughts" id="th-${a.k}"></div><div id="hy-${a.k}"></div></div>`).join(''));
+  follow();
+  await Promise.all(defs.map((a,i)=>runAgent(a,i*650,alive,w,follow)));
+  if(!alive())return;
+
+  await w(500);if(!alive())return;
+  step(2,'Discordance engine comparing conclusions');
+  body.insertAdjacentHTML('beforeend',discordanceHTML(act));buzz([20,30,20]);follow();
+  await w(2600);if(!alive())return;
+
+  step(3,'Agents debating the evidence');
+  if(act.length>=2){
+    body.insertAdjacentHTML('beforeend',`<div class="secTitle" style="margin-top:6px"><div class="h3">Debate</div><span class="small">${act.length} agents</span></div><div id="chat"></div>`);
+    for(const[k,text]of chatScript(st).filter(m=>!S.paused.has(m[0]))){
+      if(!alive())return;
+      const a=defs.find(x=>x.k===k),m=document.createElement('div');m.className='msg';
+      m.innerHTML=`${agAv(a,36)}<div class="bubble"><div class="who">${a.name}</div><div class="typing"><i></i><i></i><i></i></div></div>`;
+      $('#chat').appendChild(m);follow();
+      await w(850);if(!alive())return;
+      m.querySelector('.typing').outerHTML=`<div>${text}</div>`;buzz(4);follow();
+      await w(1000);
+    }
+  }
+  if(!alive())return;
+
+  step(4,'Reasoning critic reviewing');
+  const cm=document.createElement('div');cm.className='msg';
+  cm.innerHTML=`<div class="av critic">${ic('scale','width:18px;height:18px')}</div><div class="bubble"><div class="who">Reasoning Critic</div><div class="typing"><i></i><i></i><i></i></div></div>`;
+  ($('#chat')||body).appendChild(cm);follow();
+  await w(1300);if(!alive())return;
+  cm.querySelector('.typing').outerHTML=`<div>Checking each hypothesis against the evidence ledger. Weighing sample sizes, repetition across cycles, and factors nobody claimed.</div>`;
+  await w(1100);if(!alive())return;
+  body.insertAdjacentHTML('beforeend',verdictHTML(act));
+  act.forEach(a=>{const b=$('#cb-'+a.k);if(b)b.style.width=a.adj*100+'%';const v=$('#cv-'+a.k);if(v)v.textContent=a.adj.toFixed(2)});
+  follow();skip.style.visibility='hidden';$('#stepLbl').textContent='Analysis complete · uncertainty preserved';
+
+  const firstRun=!S.debated;S.debated=true;questDone('ask');earn('debate');
+  if(!S.unlocked){S.unlocked=true;S.evidence=100;S.need={energy:true,sleep:true};earn('pattern')}
+  if(firstRun)setTimeout(()=>{confetti(130,.5,.55);xp(50)},350);
+}
+function leaveDebate(){runId++;go('today')}
+function revealInsight(){S.back='insights';go('insight');setTimeout(()=>confetti(120,.5,.3),350)}
+
+/* ---------- INSIGHT + "Why?" ---------- */
+function confRing(p){const r=32,c=2*Math.PI*r;return`<div style="position:relative;width:76px;height:76px;flex:none"><svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="${r}" fill="none" stroke="rgba(30,26,34,.12)" stroke-width="8"/><circle class="cr" cx="38" cy="38" r="${r}" fill="none" stroke="url(#brandG)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${c.toFixed(1)}" data-off="${(c*(1-p)).toFixed(1)}" style="transition:stroke-dashoffset 1.4s var(--ease)"/></svg><div style="position:absolute;inset:0;display:grid;place-items:center;font-weight:500;font-size:17px">${Math.round(p*100)}%</div></div>`}
+const emph=t=>esc(t).replace(/\bcycle\b/,'<em>cycle</em>');
+function renderInsight(){
+  const st=stats(),R=S.analysis&&S.analysis.report;
+  const defs=agentDefs(st).map(a=>{const v=R&&(R.agent_views||[]).find(x=>AG_IN[x.agent]===a.k);return R?Object.assign({},a,{adj:v&&v.claim?+v.after:null}):a});
+  $('#s-insight').innerHTML=`<div class="hdr"><button class="backBtn" onclick="go(S.back&&S.back!=='insight'?S.back:'insights')" aria-label="Back">${ic('back')}</button><div style="flex:1"><div class="eyebrow">Pattern unlocked · ${fmt(TODAY)}</div><div class="h3">Fatigue × cycle × medication</div></div><button class="backBtn" onclick="toast('Pinned to your insights','sparkle')" aria-label="Pin insight">${ic('sparkle')}</button></div>
+  <div class="card ihero iriCard"><div class="row" style="gap:6px;flex-wrap:wrap"><span class="pill"><span class="sw" style="background:#c4614f"></span>${st.fatN} fatigue logs</span><span class="pill"><span class="sw" style="background:#9a6bc0"></span>4 cycles</span><span class="pill"><span class="sw" style="background:#b08433"></span>${st.medN} med change${st.medN>1?'s':''}</span></div>
+    <div class="big">${R&&R.headline?emph(R.headline):`Your fatigue follows your <em>cycle</em>, and has come more often since ${fmt(MED_DAY)}.`}</div>
+    <div class="confRing">${confRing(R?(+R.confidence||0):.68)}<div><b>${R?esc(R.confidence_word||''):'Medium'} confidence</b><div class="lbl">A time-based link, not proof of cause. The agents disagreed on the main factor.</div></div></div></div>
+  <div class="card"><div class="row between" style="align-items:flex-start"><div><div class="h3">Fatigue by cycle day</div><div class="small">One row per cycle · dot size = severity</div></div><div class="seg2" id="dpView"><button class="${S.dpv==='table'?'':'on'}" data-v="chart">Chart</button><button class="${S.dpv==='table'?'on':''}" data-v="table">Table</button></div></div>
+    <div id="dotplot" class="mt12"></div>
+    <div class="legend" style="justify-content:flex-start;margin-top:10px"><span><i style="background:#c4614f"></i>Fatigue log</span><span><i class="bar" style="background:#b08433;width:4px;height:12px"></i>Spironolactone start</span><span><i class="bar" style="background:rgba(154,107,192,.3);width:14px;height:10px"></i>Days 20–28</span></div></div>
+  <button class="btn primary block whyBtn" id="whyBtn" onclick="showWhy()">${ic('help')}Why? Show me the evidence</button>
+  <div class="card mt16" id="whyCard" style="display:none"><div class="chain" id="chain"></div></div>
+  <div class="secTitle"><div class="h3">How each agent sees it</div><span class="small">after critic review</span></div>
+  <div class="card" style="padding:4px 16px">${defs.map((a,i)=>`<div class="adj" style="${i?'':'border-top:0'}"><div class="d" style="background:${T[a.k].hex}">${ic(a.icon)}</div><div><div class="n">${a.short}</div><div class="w">${a.name}${S.paused.has(a.k)?' · paused':''}</div></div><div class="v">${S.paused.has(a.k)||a.adj==null?'—':a.adj.toFixed(2)}</div></div>`).join('')}</div>
+  <div class="card expCard" id="expCard"></div>
+  <div class="row" style="gap:10px"><button class="btn ghost" style="flex:1" onclick="push('graph')">${ic('graph')}Graph</button><button class="btn ghost" style="flex:1" onclick="push('brief')">${ic('doc')}Brief</button></div>`;
+  renderDotplot();renderExp();
+  $$('#dpView button').forEach(b=>b.onclick=()=>{S.dpv=b.dataset.v;$$('#dpView button').forEach(x=>x.classList.toggle('on',x===b));buzz(4);renderDotplot()});
+  requestAnimationFrame(()=>requestAnimationFrame(()=>$$('#s-insight .cr').forEach(c=>c.style.strokeDashoffset=c.dataset.off)));
+}
+function renderDotplot(){
+  const el=$('#dotplot');if(!el)return;const fat=stats().fat;
+  if(S.dpv==='table'){el.innerHTML=`<table class="tbl"><thead><tr><th>Date</th><th>Cycle</th><th>Day</th><th style="text-align:right">Severity</th></tr></thead><tbody>${fat.map(e=>`<tr><td>${fmt(e.d)}</td><td>${cycIdx(e.d)+1}</td><td>${cd(e.d)}</td><td style="text-align:right">${e.sev}/10</td></tr>`).join('')}</tbody></table>`;return}
+  const W=320,L=58,Rr=8,rowH=34,T0=6,H=T0+4*rowH+20,cw=(W-L-Rr)/28,X=c=>L+(c-.5)*cw;
+  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="Fatigue logs by cycle day for four cycles">`;
+  s+=`<rect x="${(L+19*cw).toFixed(1)}" y="${T0}" width="${(9*cw).toFixed(1)}" height="${4*rowH}" fill="#9a6bc0" fill-opacity=".16" rx="6"/>`;
+  ['Jun–Jul','Jul–Aug','Aug–Sep','Sep–now'].forEach((n,i)=>{const cy=T0+i*rowH+rowH/2;s+=`<line x1="${L}" x2="${W-Rr}" y1="${cy}" y2="${cy}" stroke="rgba(30,26,34,.08)"/><text class="axisTxt" x="0" y="${cy+4}" style="font-size:11.5px">${n}</text>`});
+  const my=T0+cycIdx(MED_DAY)*rowH,mx=X(cd(MED_DAY)).toFixed(1);
+  s+=`<line x1="${mx}" x2="${mx}" y1="${my+5}" y2="${my+rowH-5}" stroke="#b08433" stroke-width="4" stroke-linecap="round"/>`;
+  const ty=T0+3*rowH,tx=L+cd(TODAY)*cw;
+  s+=`<rect x="${tx.toFixed(1)}" y="${ty+7}" width="${(W-Rr-tx).toFixed(1)}" height="${rowH-14}" fill="rgba(30,26,34,.06)" rx="4"/>`;
+  fat.forEach(e=>{const cy=T0+cycIdx(e.d)*rowH+rowH/2,cx=X(cd(e.d)).toFixed(1);s+=`<circle cx="${cx}" cy="${cy}" r="${(3+e.sev*.35).toFixed(1)}" fill="#c4614f" stroke="#FFFDF9" stroke-width="2"/>`});
+  fat.forEach(e=>{const cy=T0+cycIdx(e.d)*rowH+rowH/2;s+=`<circle class="dpHit" cx="${X(cd(e.d)).toFixed(1)}" cy="${cy}" r="12" fill="transparent" data-id="${e.id}" style="cursor:pointer"/>`});
+  [1,7,14,20,28].forEach(c=>s+=`<text class="axisTxt" x="${X(c).toFixed(1)}" y="${H-4}" text-anchor="middle">${c}</text>`);
+  el.innerHTML=s+`</svg><div class="small" id="dpRo" style="margin-top:6px;min-height:19px">Tap a dot to see the record behind it.</div>`;
+  $$('.dpHit').forEach(c=>{const f=()=>{const e=E.find(x=>x.id===c.dataset.id);$('#dpRo').innerHTML=`<b style="color:var(--ink)">${fmt(e.d)}</b> · cycle day ${cd(e.d)} · fatigue ${e.sev}/10 <button style="color:var(--plum);font-weight:600" onclick="openEvent('${e.id}')">open →</button>`};c.addEventListener('pointerenter',f);c.addEventListener('click',f)});
+}
+function whyLive(st,R){
+  const W=R.why_chain||{},chip=id=>{const sid=safeId(id);return`<button class="evChip" onclick="openEvent('${sid}')">${sid}</button>`};
+  const cycles=STARTS.filter(x=>x<=TODAY).length,c=+R.confidence||0;
+  return[
+    ['Sources',`<div class="srcRow">${[['sym',st.fatN+' fatigue logs'],['cyc',cycles+' cycles'],['lab',st.labN+' lab values'],['slp',st.slN+' sleep nights'],['med',st.medN+' medication change'+(st.medN>1?'s':'')]].map(([k,t])=>`<span class="pill"><span class="sw" style="background:${T[k].hex}"></span>${t}</span>`).join('')}</div>`],
+    ['Observations',(W.observations||[]).length?`<ul class="list" style="margin:0">${W.observations.map(o=>`<li><span>${esc(o.statement||'')}</span>${(o.evidence_ids||[]).slice(0,2).map(chip).join('')}</li>`).join('')}</ul>`:'<p class="small">No individual observations were cited by the agents.</p>'],
+    ['Reasoning',`<p class="p">${esc(W.reasoning||'')}</p>`],
+    ['Confidence',`<div class="conf"><div class="bar"><i style="width:${Math.round(c*100)}%;background:var(--iri-deep)"></i></div><b>${c.toFixed(2)}</b></div><p class="small mt8">${esc(R.confidence_word||'')}, after the critic weighed every agent's evidence.</p>`],
+    ['Alternative explanations',`<div class="srcRow">${(W.alternatives||[]).map(t=>`<span class="pill">${esc(t)}</span>`).join('')}</div>`]
+  ];
+}
+async function showWhy(){
+  const card=$('#whyCard');
+  if(card.style.display!=='none'){card.scrollIntoView({behavior:'smooth',block:'start'});return}
+  card.style.display='';const st=stats(),R=S.analysis&&S.analysis.report;
+  const L=R&&R.why_chain?whyLive(st,R):[
+    ['Sources',`<div class="srcRow">${[['sym',st.fatN+' fatigue logs'],['cyc','4 cycles'],['lab',st.labN+' lab values'],['slp',st.slN+' sleep nights'],['med',st.medN+' medication change'+(st.medN>1?'s':'')]].map(([k,t])=>`<span class="pill"><span class="sw" style="background:${T[k].hex}"></span>${t}</span>`).join('')}</div>`],
+    ['Observations',`<ul class="list" style="margin:0"><li><span>${st.late} of ${st.fatN} fatigue logs fell on cycle days 20–28, in ${st.cyclesWith} of 4 cycles</span><button class="evChip" onclick="push('timeline')">timeline</button></li>
+      <li><span>Fatigue logs rose from ${st.pre} (46 days before ${fmt(MED_DAY)}) to ${st.post} (45 days after)</span><button class="evChip" onclick="openEvent('MED-0816')">MED-0816</button></li>
+      <li><span>Day-21 progesterone: 7.9 → 4.2 ng/mL, from 2 samples</span><button class="evChip" onclick="openEvent('LAB-0926-P4')">LAB-0926-P4</button></li>
+      <li><span>Late-luteal nights averaged ${st.slLate} h vs ${st.slOther} h on other nights</span></li></ul>`],
+    ['Reasoning','<p class="p">Timing repeats in every cycle, so a phase pattern is likely real. The rise in frequency lines up with the medication start, but sleep also dropped then, so the two can\'t be separated yet.</p>'],
+    ['Confidence','<div class="conf"><div class="bar"><i style="width:68%;background:var(--iri-deep)"></i></div><b>0.68</b></div><p class="small mt8">Medium: timing is consistent, but there are only 2 comparable lab samples and 1 medication change.</p>'],
+    ['Alternative explanations',`<div class="srcRow">${['Sleep disruption','Iron or B12 (never measured)','Stress or workload (not logged)','Chance, given small numbers'].map(t=>`<span class="pill">${t}</span>`).join('')}</div>`]
+  ];
+  $('#chain').innerHTML=L.map(([h,b],i)=>`<div class="link"><div class="num">${i+1}</div><h4>${h}</h4>${b}</div>`).join('');
+  card.scrollIntoView({behavior:'smooth',block:'start'});
+  const ls=$$('#chain .link');
+  for(const l of ls){await sleep(RM?0:380);l.classList.add('on');buzz(4)}
+  $('#whyBtn').innerHTML=ic('check')+'Evidence chain shown';
+  if(!S.whySeen){S.whySeen=true;xp(10,$('#whyBtn'))}
+}
+function renderExp(){
+  const el=$('#expCard');if(!el)return;const R=S.analysis&&S.analysis.report;
+  el.innerHTML=S.exp?`<div class="row"><div class="bub" style="background:var(--lab)">${ic('flask')}</div><div style="flex:1"><div class="h3">Experiment running</div><div class="small">Log energy on cycle days 6–13 · opens ${fmt(NEXT_START+5)}</div></div><span class="xpTag">Active</span></div><div class="meter mt12"><i style="width:4%;background:linear-gradient(90deg,#16917f,#4f79b8)"></i></div><div class="small mt8">0 of 8 days logged. You'll get a nudge when the window opens.</div>`
+  :`<div class="row between"><div class="eyebrow" style="color:var(--plum)">Tiny experiment</div><span class="xpTag">+30 XP</span></div>${R&&R.experiment?`<div class="h3 mt8">${esc(R.experiment)}</div><p class="small mt8">The critic's top suggestion for settling where the agents disagree. Start it and Hormony will nudge you at the right moment.</p>`:`<div class="h3 mt8">Test the medication thread</div><p class="small mt8">If fatigue also shows up on cycle days 6–13, the medication explanation gets stronger. If it doesn't, cycle timing wins. Eight quick logs settle it.</p>`}<button class="btn sm ghost mt12" onclick="startExp(this)">${ic('flask')}Start experiment</button>`;
+}
+function startExp(b){S.exp=true;xp(30,b);earn('exp');confetti(60,.5,.7);renderExp();toast('Experiment started')}
+
+/* ---------- INSIGHTS list ---------- */
+function renderInsights(){
+  $('#insCount').textContent=`${S.unlocked?1:0} of 4 unlocked`;
+  const lk=`width:14px;height:14px`;
+  const locked=[['Sleep × cycle rhythm','Your sleep shortens by about an hour before your period.',60,'Log 4 more nights of sleep','slp'],['Headache timing','Headaches land within a day of fatigue days.',35,'3 more headache logs needed','sym'],['Anxiety and your cycle','Anxiety clusters around cycle days 19–24.',45,'Log mood for 5 more days','sym']];
+  let h=S.unlocked
+    ?`<div class="card tap iCard unlocked iriCard" onclick="push('insight')"><div class="row between"><span class="pill pearl">${ic('sparkle',lk)}Unlocked</span><span class="small">${S.analysis&&S.analysis.report?esc(S.analysis.report.confidence_word||''):'Medium'} confidence</span></div><div class="ttl">${S.analysis&&S.analysis.report&&S.analysis.report.headline?esc(S.analysis.report.headline):`Your fatigue follows your cycle, and has come more often since ${fmt(MED_DAY)}.`}</div><div class="row" style="gap:6px;flex-wrap:wrap">${AG.map(a=>`<span class="pill"><span class="sw" style="background:${T[a.k].hex}"></span>${a.name}</span>`).join('')}</div></div>`
+    :`<div class="card tap iCard locked" onclick="guide('checkin')"><div class="row between"><span class="pill">${ic('lock',lk)}${S.evidence}% there</span><span class="small">Fatigue pattern</span></div><div class="ttl">Your fatigue follows your cycle, and has come more often since ${fmt(MED_DAY)}.</div><div class="meter"><i style="width:${S.evidence}%"></i></div><div class="small mt8">Finish today's check-in to unlock →</div></div>`;
+  h+=locked.map(([t,txt,p,need,k])=>`<div class="card tap iCard locked" onclick="openLog();setTimeout(()=>logForm('${k}'),80)"><div class="row between"><span class="pill">${ic('lock',lk)}${p}% there</span><span class="small">${t}</span></div><div class="ttl">${txt}</div><div class="meter"><i style="width:${p}%"></i></div><div class="small mt8">${need} →</div></div>`).join('');
+  $('#insList').innerHTML=h;
+}
+
+/* ---------- HYPOTHESIS GRAPH (tiny force layout, draggable) ---------- */
+const GW=354,GH=400;let G=null,graphRAF=0;
+const nodeColor=n=>n.t==='ghost'?'#B3ABB6':T[n.t].hex;
+const GPOS={fat:[177,200,32],lut:[80,95,24],med:[280,95,22],p4:[70,300,22],slp:[177,55,22],anx:[290,300,17],iron:[177,340,18]};
+function shortOf(e){const t=String(e.evidence||'');let m=t.match(/(\d+)\s*of\s*(\d+)/);if(m)return m[1]+'/'+m[2];m=t.match(/(\d+(?:\.\d+)?)\s*(?:→|->)\s*(\d+(?:\.\d+)?)/);if(m)return m[1]+'→'+m[2];return e.confidence==null?'untested':(+e.confidence).toFixed(2)}
+function graphFromApi(g){
+  const nodes=(g.nodes||[]).map((n,i)=>{const t=n.type==='ghost'?'ghost':(TYPE_IN[n.type]||'sym'),p=GPOS[n.id]||(/^lab/.test(n.id)?GPOS.p4:[177+Math.cos(i)*120,200+Math.sin(i)*120,20]);return{id:n.id,label:n.label||n.id,sub:n.sub||'',t,r:p[2],x:p[0],y:p[1]}});
+  const byId=Object.fromEntries(nodes.map(n=>[n.id,n]));
+  const edges=(g.edges||[]).filter(e=>byId[e.a]&&byId[e.b]).map(e=>({a:e.a,b:e.b,type:e.type||'Association',ev:e.evidence||'',win:e.window||'—',conf:e.confidence==null?null:+e.confidence,alt:e.alternatives||[],ids:e.evidence_ids||[],short:shortOf(e),ghost:e.type==='Untested'||e.confidence==null||byId[e.a].t==='ghost'}));
+  return{nodes,edges};
+}
+function graphModel(){
+  if(S.analysis&&S.analysis.graph&&(S.analysis.graph.nodes||[]).length)return graphFromApi(S.analysis.graph);
+  const st=stats();
+  return{nodes:[
+    {id:'fat',label:'Fatigue',sub:`${st.fatN} logs`,t:'sym',r:32,x:177,y:200},
+    {id:'lut',label:'Late luteal',sub:'days 20–28',t:'cyc',r:24,x:80,y:95},
+    {id:'med',label:'Spironolactone',sub:'from '+fmt(MED_DAY),t:'med',r:22,x:280,y:95},
+    {id:'p4',label:'Progesterone ↓',sub:'day 21',t:'lab',r:22,x:70,y:300},
+    {id:'slp',label:'Short sleep',sub:'< 6.5 h',t:'slp',r:22,x:177,y:55},
+    {id:'anx',label:'Anxiety',sub:`${st.anxN} logs`,t:'sym',r:17,x:290,y:300},
+    {id:'iron',label:'Iron / B12',sub:'not measured',t:'ghost',r:18,x:177,y:340}],
+  edges:[
+    {a:'lut',b:'fat',type:'Temporal association',ev:`${st.late} of ${st.fatN} fatigue logs`,win:'Cycle days 20–28, all 4 cycles',conf:.74,alt:['Sleep also dips on these days','Symptoms may be noticed more late-cycle'],short:`${st.late}/${st.fatN}`},
+    {a:'med',b:'fat',type:'Before / after association',ev:`${st.pre} → ${st.post} fatigue logs`,win:`46 days before vs 45 days after ${fmt(MED_DAY)}`,conf:.68,alt:[`Sleep also fell after ${fmt(MED_DAY)}`,'Only one medication change observed'],short:`${st.pre}→${st.post}`},
+    {a:'p4',b:'fat',type:'Co-occurrence',ev:'2 comparable day-21 samples',win:`${fmt(31)} vs ${fmt(87)}`,conf:.52,alt:['Normal cycle-to-cycle variation','Single-sample lab noise'],short:'2 samples'},
+    {a:'slp',b:'fat',type:'Co-occurrence',ev:`${st.shortBefore} of ${st.fatN} fatigue days followed a night under 6.5 h`,win:'The night before each fatigue log',conf:.6,alt:['Fatigue could also disturb sleep (reverse direction)','Both may follow cycle timing'],short:`${st.shortBefore}/${st.fatN}`},
+    {a:'lut',b:'slp',type:'Temporal association',ev:`Late-luteal nights ${st.slLate} h vs ${st.slOther} h`,win:'Cycle days 20–28',conf:.7,alt:['Stress or schedule changes not logged'],short:`−${(st.slOther-st.slLate).toFixed(1)} h`},
+    {a:'med',b:'slp',type:'Before / after association',ev:`Average sleep ${st.slBefore} h → ${st.slAfter} h`,win:`Nights outside days 20–28, before vs after ${fmt(MED_DAY)}`,conf:.45,alt:['Seasonal or schedule change','Small difference'],short:`${st.slBefore}→${st.slAfter}`},
+    {a:'fat',b:'anx',type:'Co-occurrence',ev:`${st.anxCo} of ${st.anxN} anxiety logs within a day of fatigue`,win:'± 1 day',conf:.5,alt:['Few anxiety logs so far'],short:`${st.anxCo}/${st.anxN}`},
+    {a:'iron',b:'fat',type:'Untested',ev:'No iron, ferritin or B12 results in 90 days',win:'—',conf:null,alt:['Ask your clinician whether testing would help'],short:'untested',ghost:true}]};
+}
+function startGraph(){
+  const m=graphModel();m.src=S.analysis&&S.analysis.graph?S.analysis.id:'local';
+  if(!G||G.src!==m.src||G.nodes.length!==m.nodes.length||G.edges.length!==m.edges.length){G=m;G.nodes.forEach(n=>{n.vx=0;n.vy=0});G.sel={edge:0};G.alpha=1}
+  else{G.edges.forEach((e,i)=>Object.assign(e,m.edges[i]));G.nodes.forEach((n,i)=>{n.sub=m.nodes[i].sub});G.alpha=Math.max(G.alpha,.4)}
+  G.edges.forEach(e=>{e.ia=G.nodes.findIndex(n=>n.id===e.a);e.ib=G.nodes.findIndex(n=>n.id===e.b)});
+  $('#graphNote').innerHTML=ic('help')+'<div><b style="color:var(--ink)">Hypotheses, not proven causes.</b> Links are time-based associations found in your records. Thicker line = more confident. Drag the circles; tap a link.</div>';
+  $('#graphLegend').innerHTML=ORDER.map(k=>`<span><i style="background:${T[k].hex}"></i>${T[k].name}</span>`).join('')+'<span><i style="border:1.5px dashed var(--muted);background:none"></i>Not measured</span>';
+  buildGraph();renderRel();stopGraph();graphRAF=requestAnimationFrame(graphTick);
+}
+function stopGraph(){cancelAnimationFrame(graphRAF);graphRAF=0}
+function buildGraph(){
+  const svg=$('#graphSvg');
+  let h=`<defs><filter id="nglow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="7"/></filter></defs><g>`;
+  G.edges.forEach((e,i)=>{const src=G.nodes[e.ia];
+    h+=`<g class="gEdge" data-i="${i}"><line class="eHit" stroke="transparent" stroke-width="24"/><line class="eLine" stroke-width="${e.ghost?1.5:(1.5+e.conf*4).toFixed(1)}" stroke-linecap="round"${e.ghost?' stroke-dasharray="4 5"':''}/>${e.ghost?'':`<circle class="ePart" r="2.8" fill="${nodeColor(src)}"/>`}<g class="eLbl"><rect rx="8" height="18" y="-9" fill="#FFFDF9" stroke="rgba(30,26,34,.14)"/><text class="lblTxt" text-anchor="middle" y="3.8">${esc(e.short)}</text></g></g>`});
+  h+='</g><g>';
+  G.nodes.forEach((n,i)=>{const c=nodeColor(n),gh=n.t==='ghost',s=n.r*.84;
+    h+=`<g class="gNode" data-i="${i}">${n.id==='fat'?`<circle r="${n.r+12}" fill="url(#goldG)" opacity=".85" filter="url(#nglow)" class="todayOrb"/>`:''}<circle r="${n.r+14}" fill="transparent"/><circle r="${n.r}" fill="${gh?'rgba(30,26,34,.04)':c}" stroke="${gh?'#8C8492':'rgba(255,253,249,.8)'}" stroke-width="1.5"${gh?' stroke-dasharray="4 4"':''}/><svg x="${-s/2}" y="${-s/2}" width="${s}" height="${s}" viewBox="0 0 24 24" style="${ICON_INLINE}${gh?';stroke:#8C8492;color:#8C8492':''}">${IC[gh?'help':T[n.t].icon]}</svg><text y="${n.r+16}" text-anchor="middle" style="fill:var(--ink);font-size:12.5px;font-weight:600">${esc(n.label)}</text><text y="${n.r+29}" text-anchor="middle" style="fill:var(--muted);font-size:10.5px">${esc(n.sub)}</text></g>`});
+  svg.innerHTML=h+'</g>';
+  G.nEl=$$('#graphSvg .gNode');
+  G.eEl=$$('#graphSvg .gEdge').map(g=>({lines:[...g.querySelectorAll('line')],ln:g.querySelector('.eLine'),pc:g.querySelector('.ePart'),lb:g.querySelector('.eLbl')}));
+  G.eEl.forEach((o,i)=>{const t=o.lb.querySelector('text');let w=0;try{w=t.getComputedTextLength()}catch(_){}if(!w)w=G.edges[i].short.length*6.5;o.lb.querySelector('rect').setAttribute('width',(w+14).toFixed(1));o.lb.querySelector('rect').setAttribute('x',(-(w+14)/2).toFixed(1))});
+  if(svg.dataset.bound)return;   // the <svg> persists across visits; bind its listeners once
+  svg.dataset.bound='1';
+  const P=ev=>{const r=svg.getBoundingClientRect();return r.width?[(ev.clientX-r.left)*GW/r.width,(ev.clientY-r.top)*GH/r.height]:[GW/2,GH/2]};
+  let drag=null,moved=0,last=null;
+  svg.addEventListener('pointerdown',ev=>{const ne=ev.target.closest('.gNode'),ee=ev.target.closest('.gEdge');
+    if(ne){drag=G.nodes[+ne.dataset.i];drag.fixed=true;moved=0;last=P(ev);try{svg.setPointerCapture(ev.pointerId)}catch(_){}G.alpha=1;buzz(5)}
+    else if(ee){G.sel={edge:+ee.dataset.i};renderRel();buzz(5)}});
+  svg.addEventListener('pointermove',ev=>{if(!drag)return;const[x,y]=P(ev);moved+=Math.hypot(x-last[0],y-last[1]);last=[x,y];drag.x=Math.max(drag.r,Math.min(GW-drag.r,x));drag.y=Math.max(drag.r,Math.min(GH-drag.r-30,y));G.alpha=1});
+  const up=()=>{if(!drag)return;if(moved<6){G.sel={node:G.nodes.indexOf(drag)};renderRel()}drag.fixed=false;drag=null};
+  svg.addEventListener('pointerup',up);svg.addEventListener('pointercancel',up);
+}
+function graphTick(t){
+  const N=G.nodes,a=G.alpha;
+  if(a>.02){
+    for(let i=0;i<N.length;i++)for(let j=i+1;j<N.length;j++){const p=N[i],q=N[j];let dx=q.x-p.x,dy=q.y-p.y;const d2=dx*dx+dy*dy||1,d=Math.sqrt(d2);if(d<(p.r+q.r)*3.2){const f=3400/d2*a;dx/=d;dy/=d;p.vx-=dx*f;p.vy-=dy*f;q.vx+=dx*f;q.vy+=dy*f}}
+    G.edges.forEach(e=>{const p=N[e.ia],q=N[e.ib],dx=q.x-p.x,dy=q.y-p.y,d=Math.hypot(dx,dy)||1,L=(e.a==='fat'||e.b==='fat')?120:150,k=.012*a*(d-L)/d;p.vx+=dx*k;p.vy+=dy*k;q.vx-=dx*k;q.vy-=dy*k});
+    N.forEach(n=>{const g=n.id==='fat'?.02:.004;n.vx+=(GW/2-n.x)*g*a;n.vy+=(GH/2-n.y)*g*a;if(n.fixed){n.vx=n.vy=0;return}
+      n.vx*=.8;n.vy*=.8;n.x=Math.max(n.r+4,Math.min(GW-n.r-4,n.x+n.vx));n.y=Math.max(n.r+4,Math.min(GH-n.r-32,n.y+n.vy))});
+    G.alpha*=.99;
+  }
+  const P=N.map((n,i)=>n.fixed?[n.x,n.y]:[n.x+Math.sin(t/1500+i*1.7)*2.2,n.y+Math.cos(t/1700+i*1.3)*2.2]);
+  G.nEl.forEach((g,i)=>g.setAttribute('transform',`translate(${P[i][0].toFixed(1)} ${P[i][1].toFixed(1)})`));
+  const sel=G.sel,sn=sel.node!==undefined?N[sel.node].id:null;
+  G.edges.forEach((e,i)=>{const o=G.eEl[i],[x1,y1]=P[e.ia],[x2,y2]=P[e.ib];
+    o.lines.forEach(l=>{l.setAttribute('x1',x1.toFixed(1));l.setAttribute('y1',y1.toFixed(1));l.setAttribute('x2',x2.toFixed(1));l.setAttribute('y2',y2.toFixed(1))});
+    const on=sel.edge===i||(sn&&(e.a===sn||e.b===sn));
+    o.ln.setAttribute('stroke',on?'rgba(90,61,110,.85)':`rgba(30,26,34,${e.ghost?.2:.18})`);
+    o.lb.setAttribute('transform',`translate(${((x1+x2)/2).toFixed(1)} ${((y1+y2)/2).toFixed(1)})`);o.lb.style.opacity=on?1:.8;
+    if(o.pc){const dx=x2-x1,dy=y2-y1,d=Math.hypot(dx,dy)||1,ra=N[e.ia].r,rb=N[e.ib].r,sx=x1+dx/d*ra,sy=y1+dy/d*ra,ex=x2-dx/d*rb,ey=y2-dy/d*rb,pr=RM?.5:((t/(2800-e.conf*1400))+i*.37)%1;
+      o.pc.setAttribute('cx',(sx+(ex-sx)*pr).toFixed(1));o.pc.setAttribute('cy',(sy+(ey-sy)*pr).toFixed(1))}
+  });
+  graphRAF=requestAnimationFrame(graphTick);
+}
+const nm=id=>G.nodes.find(n=>n.id===id).label;
+const gdot=id=>`<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${nodeColor(G.nodes.find(n=>n.id===id))}"></span>`;
+const confWord=c=>c>=.7?'Medium-high':c>=.55?'Medium':'Low';
+function renderRel(){
+  const el=$('#relCard'),sel=G.sel;
+  if(sel.node!==undefined){const n=G.nodes[sel.node],es=G.edges.map((e,i)=>[e,i]).filter(([e])=>e.a===n.id||e.b===n.id);
+    el.innerHTML=`<div class="eyebrow">Factor</div><div class="h3 mt8">${gdot(n.id)}${esc(n.label)}</div><p class="small mt8">${esc(n.sub)} · ${es.length} link${es.length===1?'':'s'}. Tap one to inspect it.</p><div class="evChips">${es.map(([e,i])=>`<button class="evChip" onclick="G.sel={edge:${i}};renderRel()">${esc(nm(e.a))} ${e.type==='Co-occurrence'?'↔':'→'} ${esc(nm(e.b))}</button>`).join('')}</div>`;
+    replay(el,'done');return}
+  const e=G.edges[sel.edge];
+  el.innerHTML=`<div class="eyebrow">Relationship</div><div class="h3 mt8">${gdot(e.a)}${esc(nm(e.a))} <span style="color:var(--muted)">${e.type==='Co-occurrence'?'↔':'→'}</span> ${gdot(e.b)}${esc(nm(e.b))}</div>
+  <div class="kv"><div><span>Type</span><b>${esc(e.type)}</b></div><div><span>Evidence</span><b>${esc(e.ev)}</b></div><div><span>Time window</span><b>${esc(e.win)}</b></div><div><span>Confidence</span><b>${e.conf==null?'Not assessable':confWord(e.conf)+' · '+e.conf.toFixed(2)}</b></div></div>
+  ${e.conf!=null?`<div class="meter mt12" style="height:8px"><i style="width:${e.conf*100}%"></i></div>`:''}
+  <div class="eyebrow" style="margin:16px 0 8px">Alternative explanations</div><div class="srcRow">${e.alt.map(a=>`<span class="pill">${esc(a)}</span>`).join('')}</div>${(e.ids||[]).length?`<div class="evChips">${e.ids.map(id=>{const sid=safeId(id);return`<button class="evChip" onclick="openEvent('${sid}')">${sid}</button>`}).join('')}</div>`:''}`;
+  replay(el,'done');
+}
+
+/* ---------- CLINICIAN BRIEF ---------- */
+const QS=['Could the timing of my fatigue relative to my cycle be relevant?','Should my day-21 progesterone values be evaluated together with these symptoms?','Could starting spironolactone contribute to the fatigue?','Would iron or B12 testing be useful?'];
+function briefData(){
+  const st=stats(),B=S.analysis&&S.analysis.brief;
+  if(B&&(B.observations||B.observed||[]).length){const KIND={symptom:'sym',lab:'lab',med:'med',sleep:'slp',cycle:'cyc'},TT=[['sym','Symptom clustering'],['lab','Laboratory measurements'],['med','Medication timing'],['slp','Sleep']];
+    const obs=(B.observations||[]).length?B.observations.map(o=>[KIND[o.kind]||'cyc',String(o.title||'Observation'),String(o.text||'')]):B.observed.map((x,i)=>[(TT[i]||['cyc'])[0],(TT[i]||[0,'Observation'])[1],String(x)]);
+    return{st,obs,interp:String(B.interpretation||''),qs:B.questions||[],footer:B.footer||''}}
+  return{st,obs:[
+    ['sym','Symptom clustering',`${st.late} of ${st.fatN} fatigue logs fell on cycle days 20–28, across all ${st.cyclesWith} cycles observed.`],
+    ['lab','Laboratory measurements','Day-21 progesterone 7.9 → 4.2 ng/mL (Aug 1 vs Sep 26). Estradiol 132 → 141 pg/mL on the same days. TSH stable (2.6 → 2.4 mIU/L).'],
+    ['med','Medication timing',`Fatigue logs rose from ${st.pre} in the 46 days before starting spironolactone 50 mg (${fmt(MED_DAY)}) to ${st.post} in the 45 days after.`],
+    ['slp','Sleep',`On nights outside cycle days 20–28, average sleep fell from ${st.slBefore} h to ${st.slAfter} h after ${fmt(MED_DAY)}. Late-luteal nights averaged ${st.slLate} h vs ${st.slOther} h on other nights.`]],
+  interp:'Multiple factors may explain the observed pattern. The current evidence does not establish a single causal explanation. Specialist agents disagreed on the leading factor (cycle timing vs. medication vs. lab change), and that disagreement is preserved here.'};
+}
+function renderBrief(){
+  const{st,obs,interp,qs,footer}=briefData(),Q=qs||QS;
+  if(qs&&S.qsFor!==S.analysis.id){S.qsFor=S.analysis.id;S.qs=new Set(qs.map((_,i)=>i))}
+  $('#briefBody').innerHTML=`<div class="paper"><div class="ph"><div><div class="pt">Endocrine Insight Report</div><div class="pm">Nancy · ${fmt(0)} – ${fmt(TODAY)}, ${dateOf(TODAY).getFullYear()} (${TODAY+1} days)<br>${st.symN} symptom logs · ${st.labN} lab values · ${st.slN} sleep nights · 4 cycles · ${st.medN} medication change${st.medN>1?'s':''}</div></div><div class="logoMini"></div></div>
+  <h5>Observed patterns</h5>${obs.map(([k,t,x],i)=>`<div class="obs"><div class="n" style="background:${T[k].hex}">${i+1}</div><div><b>${t}.</b> ${esc(x)}</div></div>`).join('')}
+  <h5>System interpretation</h5><div class="interp">${esc(interp)}</div>
+  <h5>Questions for my clinician <span style="text-transform:none;letter-spacing:0;font-weight:500">· tap to include</span></h5>
+  ${Q.map((q,i)=>`<div class="qq ${S.qs.has(i)?'on':''}" onclick="toggleQ(${i},this)" role="checkbox" aria-checked="${S.qs.has(i)}" tabindex="0"><div class="box">${ic('check')}</div><div>${esc(q)}</div></div>`).join('')}
+  <div class="foot">${footer?esc(footer):'Not a diagnosis. Hormony surfaces time-based associations in self-reported and uploaded data so you can have a better-informed conversation with your clinician.'} Generated ${fmt(TODAY)}, ${dateOf(TODAY).getFullYear()}.</div></div>`;
+  $('#copyBtn').innerHTML=ic('copy')+'Copy';$('#shareBtn').innerHTML=ic('share')+'Share brief';
+}
+function toggleQ(i,el){S.qs.has(i)?S.qs.delete(i):S.qs.add(i);el.classList.toggle('on');el.setAttribute('aria-checked',S.qs.has(i));buzz(4)}
+function briefText(){const{obs,interp,qs}=briefData(),Q=qs||QS;return['ENDOCRINE INSIGHT REPORT: Nancy',`${fmt(0)} – ${fmt(TODAY)}, ${dateOf(TODAY).getFullYear()} (${TODAY+1} days) · generated by Hormony`,'','OBSERVED PATTERNS',...obs.map((o,i)=>`${i+1}. ${o[1]}: ${o[2]}`),'','SYSTEM INTERPRETATION',interp,'','QUESTIONS FOR MY CLINICIAN',...[...S.qs].sort((a,b)=>a-b).filter(i=>i<Q.length).map(i=>'• '+Q[i]),'','Not a diagnosis. Associations from self-reported and uploaded data.'].join('\n')}
+async function copyBrief(){
+  const txt=briefText();
+  if(window.ReactNativeWebView){bridge('copy',{text:txt});return briefDone('Brief copied to clipboard')}
+  try{await navigator.clipboard.writeText(txt)}catch(e){const t=document.createElement('textarea');t.value=txt;document.body.appendChild(t);t.select();try{document.execCommand('copy')}catch(_){}t.remove()}
+  briefDone('Brief copied to clipboard');
+}
+async function shareBrief(){
+  if(window.ReactNativeWebView){bridge('share',{text:briefText()});return briefDone('Brief shared')}
+  if(navigator.share){try{await navigator.share({title:'Endocrine Insight Report',text:briefText()});briefDone('Brief shared');return}catch(e){if(e.name==='AbortError')return}}
+  copyBrief();
+}
+function briefDone(msg){toast(msg);if(!S.briefed){S.briefed=true;earn('brief');xp(20,$('#shareBtn'));confetti(80,.5,.8)}}
+
+/* ---------- ME ---------- */
+function renderMe(){
+  const L=lvl(),p=lvlPct(),st=stats();
+  $('#s-me').innerHTML=`<div class="hdr"><div><div class="eyebrow">Your space</div><h1 class="h1">You, <em>in context</em></h1></div></div>
+  <div class="card"><div class="prof"><div class="bigAv">${ringSvg(84,5,p)}<div class="face">N</div></div><div style="flex:1"><div class="h2">Nancy</div><div class="small">Level ${L.n} · ${L.name}</div><div class="xpBar"><i style="width:${(p*100).toFixed(0)}%"></i></div><div class="small mt8">${L.next?`${S.xp-L.from} / ${L.to-L.from} XP to ${L.next[1]}`:'Max level reached'}</div></div></div>
+  <div class="stats3 mt16"><div class="stat"><b>${S.streak}</b><span>day streak</span></div><div class="stat"><b>${S.badges.size}</b><span>badges</span></div><div class="stat"><b>${S.unlocked?1:0}</b><span>insights</span></div></div></div>
+  <div class="secTitle"><div class="h3">Badges</div><span class="small">${S.badges.size} of ${BADGES.length}</span></div>
+  <div class="card"><div class="badges">${BADGES.map(([k,e,n])=>`<div class="badge ${S.badges.has(k)?'':'locked'} ${S.fresh===k?'fresh':''}"><div class="b">${ic(e)}</div>${n}</div>`).join('')}</div></div>
+  <div class="secTitle"><div><div class="h3">Agent access</div><div class="small">Choose what each specialist may read</div></div></div>
+  <div class="card" style="padding-top:8px;padding-bottom:12px">${AG.map(a=>`<div class="setRow">${agAv(a,40)}<div><div class="t">${a.name}</div><div class="s">${a.reads}</div></div><button class="tog ${S.paused.has(a.k)?'':'on'}" style="--c:${T[a.k].hex}" onclick="toggleAgent('${a.k}',this)" aria-label="Allow ${a.name}" aria-pressed="${!S.paused.has(a.k)}"><i></i></button></div>`).join('')}</div>
+  <div class="secTitle"><div class="h3">Data sources</div></div>
+  <div class="card" style="padding-top:8px">${[['lab','Lab reports',`${st.labN} values · PDF + scans`],['sym','Daily check-ins',`${st.symN} symptom logs`],['cyc','Cycle history','4 cycles · manual'],['slp','Sleep app',`${st.slN} nights · CSV import`],['med','Medications',`${st.medN} change${st.medN>1?'s':''} · manual`]].map(([k,t,s])=>`<div class="setRow"><div class="bub" style="background:${T[k].hex}">${ic(T[k].icon)}</div><div><div class="t">${t}</div><div class="s">${s}</div></div><span class="synced">Synced</span></div>`).join('')}
+  <button class="btn ghost block mt12" onclick="pickImport()">${ic('upload')}Import CSV / JSON</button></div>
+  <div class="card pearlCard"><div class="row" style="align-items:flex-start"><div class="bub" style="background:var(--lab)">${ic('shield')}</div><div><div class="h3">Private by design</div><div class="small" style="margin-top:3px">Stored on this device. Agents only see the records scoped to your question, and every conclusion keeps a link back to its source.</div></div></div></div>
+  <button class="btn ghost block" onclick="location.reload()">Reset demo</button>`;
+  S.fresh=null;
+}
+function toggleAgent(k,b){const a=AG.find(x=>x.k===k);if(S.paused.has(k)){S.paused.delete(k);b.classList.add('on');toast(a.name+' can read your data again')}else{S.paused.add(k);b.classList.remove('on');toast(a.name+' paused · it will skip the next analysis','lock')}b.setAttribute('aria-pressed',!S.paused.has(k));buzz(6)}
+
+/* ---------- desktop demo guide ---------- */
+function guide(k){
+  $('#levelup').classList.remove('on');
+  if(k==='checkin'){go('today');setTimeout(()=>$('#checkin').scrollIntoView({behavior:'smooth',block:'center'}),320)}
+  if(k==='timeline')go('timeline');
+  if(k==='ask'){go('today');setTimeout(()=>openAsk(),260)}
+  if(k==='insight'){S.back='insights';go('insight')}
+  if(k==='graph'){S.back='insights';go('graph')}
+  if(k==='brief'){S.back='insights';go('brief')}
+}
+
+/* ---------- boot ---------- */
+function init(){
+  document.body.insertAdjacentHTML('afterbegin',`<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="goldG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d98fbf"/><stop offset=".35" stop-color="#a592e6"/><stop offset=".7" stop-color="#7fbde2"/><stop offset="1" stop-color="#8fd1b3"/></linearGradient><linearGradient id="brandG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5A3D6E"/><stop offset=".55" stop-color="#9a6bc0"/><stop offset="1" stop-color="#d98fbf"/></linearGradient></defs></svg>`);
+  const navMap={today:['home','Today'],timeline:['timeline','Timeline'],insights:['bulb','Insights'],me:['user','Me']};
+  $$('.navBtn').forEach(b=>{const[i,l]=navMap[b.dataset.go];b.innerHTML=ic(i)+`<span>${l}</span><i class="dot"></i>`;b.onclick=()=>go(b.dataset.go)});
+  $('#askOrb').innerHTML=ic('sparkle');
+  $('#tlAdd').innerHTML=ic('plus');$('#dbClose').innerHTML=ic('x');$('#grBack').innerHTML=ic('back');$('#brBack').innerHTML=ic('back');
+  $('#icGraph').innerHTML=ic('graph');$('#icBrief').innerHTML=ic('doc');$('#chev1').innerHTML=ic('chev');$('#chev2').innerHTML=ic('chev');
+  const hr=new Date().getHours();
+  $('#greet').innerHTML=`${hr<12?'Good morning':hr<18?'Good afternoon':'Good evening'},<br><em>Nancy</em>`;
+  $('#todayDate').textContent=`${WD[dateOf(TODAY).getDay()]} · ${fmt(TODAY)}`;
+  const tick=()=>{const d=new Date();$('#clock').textContent=d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')};tick();setInterval(tick,30000);
+  renderStreak();renderAvatar();renderRing();initRing();
+  $('#ringLegend').innerHTML=`<span><i style="background:#c4614f"></i>Symptoms</span><span><i class="bar" style="background:#4f79b8"></i>Short sleep</span><span><i style="background:#16917f"></i>Lab draw</span><span><i class="pearlDot"></i>Today</span>`;
+  $('#ringHint').innerHTML=ic('cycle','width:15px;height:15px')+'Drag around the ring to replay this cycle';
+  renderUnlock();renderCheckin();renderQuest();renderStats();
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeSheet();$('#levelup').classList.remove('on')}});
+  setTimeout(()=>$('#splash').classList.add('off'),RM?150:1500);
+}
+init();
+bootLive();
+</script>
+</body>
+</html>

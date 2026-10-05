@@ -1,0 +1,1133 @@
+{
+ "question": "Why have my fatigue episodes increased over the last two cycles?",
+ "result": {
+  "question": "Why have my fatigue episodes increased over the last two cycles?",
+  "facts": {
+   "lab": [
+    {
+     "id": "F-LAB-1",
+     "statement": "10 lab values across 4 blood draws",
+     "evidence_ids": []
+    },
+    {
+     "id": "F-LAB-2",
+     "statement": "Day-21 progesterone 7.9 ng/mL on Aug 1 → 4.2 ng/mL on Sep 26",
+     "evidence_ids": [
+      "LAB-0801-P4",
+      "LAB-0926-P4"
+     ]
+    },
+    {
+     "id": "F-LAB-3",
+     "statement": "Day-21 estradiol 132 pg/mL on Aug 1 → 141 pg/mL on Sep 26 (stable)",
+     "evidence_ids": [
+      "LAB-0801-E2",
+      "LAB-0926-E2"
+     ]
+    },
+    {
+     "id": "F-LAB-4",
+     "statement": "Day-25 TSH 2.6 mIU/L on Jul 8 → 2.4 mIU/L on Sep 2 (stable)",
+     "evidence_ids": [
+      "LAB-0708-TSH",
+      "LAB-0902-TSH"
+     ]
+    },
+    {
+     "id": "F-LAB-5",
+     "statement": "Iron/ferritin and B12 were not measured in the last 91 days, so their status is unknown",
+     "evidence_ids": []
+    }
+   ],
+   "symptom": [
+    {
+     "id": "F-SYM-1",
+     "statement": "Fatigue: 5 logs in the 46 days before Spironolactone 50 mg started on Aug 16 → 11 in the 45 days after",
+     "evidence_ids": [
+      "MED-0816",
+      "SYM-0707-F",
+      "SYM-0819-F",
+      "SYM-0822-F"
+     ]
+    },
+    {
+     "id": "F-SYM-2",
+     "statement": "3 post-change fatigue logs fall outside cycle days 20–28",
+     "evidence_ids": [
+      "SYM-0819-F",
+      "SYM-0822-F",
+      "SYM-0912-F"
+     ]
+    },
+    {
+     "id": "F-SYM-3",
+     "statement": "Anxiety appeared within a day of fatigue in 4 of 4 logs",
+     "evidence_ids": [
+      "SYM-0803-A",
+      "SYM-0901-A",
+      "SYM-0924-A",
+      "SYM-0927-A"
+     ]
+    },
+    {
+     "id": "F-SYM-4",
+     "statement": "Headache appeared within a day of fatigue in 4 of 4 logs",
+     "evidence_ids": [
+      "SYM-0710-H",
+      "SYM-0805-H",
+      "SYM-0903-H",
+      "SYM-0927-H"
+     ]
+    },
+    {
+     "id": "F-SYM-5",
+     "statement": "Bloating appeared within a day of fatigue in 2 of 2 logs",
+     "evidence_ids": [
+      "SYM-0805-B",
+      "SYM-0926-B"
+     ]
+    }
+   ],
+   "cycle": [
+    {
+     "id": "F-CYC-1",
+     "statement": "13 of 16 fatigue logs fall on cycle days 20–28",
+     "evidence_ids": [
+      "SYM-0707-F",
+      "SYM-0709-F",
+      "SYM-0802-F",
+      "SYM-0804-F"
+     ]
+    },
+    {
+     "id": "F-CYC-2",
+     "statement": "The pattern repeats in 4 of 4 cycles",
+     "evidence_ids": [
+      "CYC-0614",
+      "CYC-0712",
+      "CYC-0809",
+      "CYC-0906"
+     ]
+    },
+    {
+     "id": "F-CYC-3",
+     "statement": "Late-luteal nights average 6.1 h vs 7.0 h on other nights",
+     "evidence_ids": []
+    }
+   ],
+   "shared": [
+    {
+     "id": "F-SHARED-1",
+     "statement": "On comparable nights (outside cycle days 20–28), sleep averaged 7.2 h before Aug 16 → 6.9 h after",
+     "evidence_ids": []
+    },
+    {
+     "id": "F-SHARED-2",
+     "statement": "11 of 16 fatigue days followed a night under 6.5 h",
+     "evidence_ids": [
+      "SLP-0706",
+      "SLP-0708",
+      "SLP-0801",
+      "SLP-0829"
+     ]
+    }
+   ]
+  },
+  "stats": {
+   "window_days": 91,
+   "window_start": "2026-07-01",
+   "today": "2026-09-29",
+   "counts": {
+    "cycle": 3,
+    "lab": 10,
+    "symptom": 26,
+    "sleep": 89,
+    "med": 1
+   },
+   "focus": {
+    "name": "Fatigue",
+    "n": 16,
+    "ids": [
+     "SYM-0707-F",
+     "SYM-0709-F",
+     "SYM-0802-F",
+     "SYM-0804-F",
+     "SYM-0806-F",
+     "SYM-0819-F",
+     "SYM-0822-F",
+     "SYM-0830-F",
+     "SYM-0901-F",
+     "SYM-0903-F",
+     "SYM-0904-F",
+     "SYM-0912-F",
+     "SYM-0925-F",
+     "SYM-0926-F",
+     "SYM-0927-F",
+     "SYM-0928-F"
+    ],
+    "late_n": 13,
+    "late_ids": [
+     "SYM-0707-F",
+     "SYM-0709-F",
+     "SYM-0802-F",
+     "SYM-0804-F",
+     "SYM-0806-F",
+     "SYM-0830-F",
+     "SYM-0901-F",
+     "SYM-0903-F",
+     "SYM-0904-F",
+     "SYM-0925-F",
+     "SYM-0926-F",
+     "SYM-0927-F",
+     "SYM-0928-F"
+    ],
+    "cycles_total": 4,
+    "cycles_with": 4,
+    "cycle_start_ids": [
+     "CYC-0614",
+     "CYC-0712",
+     "CYC-0809",
+     "CYC-0906"
+    ]
+   },
+   "med": {
+    "id": "MED-0816",
+    "name": "Spironolactone 50 mg",
+    "short": "Spironolactone",
+    "date": "2026-08-16",
+    "label": "Aug 16",
+    "days_before": 46,
+    "days_after": 45,
+    "pre": 5,
+    "post": 11,
+    "pre_ids": [
+     "SYM-0707-F",
+     "SYM-0709-F",
+     "SYM-0802-F",
+     "SYM-0804-F",
+     "SYM-0806-F"
+    ],
+    "post_ids": [
+     "SYM-0819-F",
+     "SYM-0822-F",
+     "SYM-0830-F",
+     "SYM-0901-F",
+     "SYM-0903-F",
+     "SYM-0904-F",
+     "SYM-0912-F",
+     "SYM-0925-F",
+     "SYM-0926-F",
+     "SYM-0927-F",
+     "SYM-0928-F"
+    ],
+    "off_ids": [
+     "SYM-0819-F",
+     "SYM-0822-F",
+     "SYM-0912-F"
+    ]
+   },
+   "trend": null,
+   "cooccur": [
+    {
+     "name": "Anxiety",
+     "co": 4,
+     "n": 4,
+     "ids": [
+      "SYM-0803-A",
+      "SYM-0901-A",
+      "SYM-0924-A",
+      "SYM-0927-A"
+     ]
+    },
+    {
+     "name": "Headache",
+     "co": 4,
+     "n": 4,
+     "ids": [
+      "SYM-0710-H",
+      "SYM-0805-H",
+      "SYM-0903-H",
+      "SYM-0927-H"
+     ]
+    },
+    {
+     "name": "Bloating",
+     "co": 2,
+     "n": 2,
+     "ids": [
+      "SYM-0805-B",
+      "SYM-0926-B"
+     ]
+    }
+   ],
+   "labs": {
+    "n": 10,
+    "draws": 4,
+    "comparisons": [
+     {
+      "code": "P4",
+      "name": "Progesterone",
+      "unit": "ng/mL",
+      "cd": 21,
+      "v1": 7.9,
+      "v2": 4.2,
+      "d1": "Aug 1",
+      "d2": "Sep 26",
+      "id1": "LAB-0801-P4",
+      "id2": "LAB-0926-P4",
+      "stable": false,
+      "direction": "down"
+     },
+     {
+      "code": "E2",
+      "name": "Estradiol",
+      "unit": "pg/mL",
+      "cd": 21,
+      "v1": 132.0,
+      "v2": 141.0,
+      "d1": "Aug 1",
+      "d2": "Sep 26",
+      "id1": "LAB-0801-E2",
+      "id2": "LAB-0926-E2",
+      "stable": true,
+      "direction": "flat"
+     },
+     {
+      "code": "TSH",
+      "name": "TSH",
+      "unit": "mIU/L",
+      "cd": 25,
+      "v1": 2.6,
+      "v2": 2.4,
+      "d1": "Jul 8",
+      "d2": "Sep 2",
+      "id1": "LAB-0708-TSH",
+      "id2": "LAB-0902-TSH",
+      "stable": true,
+      "direction": "flat"
+     }
+    ],
+    "measured": [],
+    "missing": [
+     "iron/ferritin",
+     "B12"
+    ]
+   },
+   "sleep": {
+    "late_avg": 6.11,
+    "other_avg": 7.05,
+    "late_ids": [
+     "SLP-0702",
+     "SLP-0703",
+     "SLP-0704",
+     "SLP-0705",
+     "SLP-0706",
+     "SLP-0707",
+     "SLP-0708",
+     "SLP-0709",
+     "SLP-0710",
+     "SLP-0730",
+     "SLP-0731",
+     "SLP-0801",
+     "SLP-0802",
+     "SLP-0803",
+     "SLP-0804",
+     "SLP-0805",
+     "SLP-0806",
+     "SLP-0807",
+     "SLP-0827",
+     "SLP-0828",
+     "SLP-0829",
+     "SLP-0830",
+     "SLP-0831",
+     "SLP-0901",
+     "SLP-0902",
+     "SLP-0903",
+     "SLP-0904",
+     "SLP-0924",
+     "SLP-0925",
+     "SLP-0926",
+     "SLP-0927"
+    ],
+    "n": 89,
+    "before_avg": 7.17,
+    "after_avg": 6.93,
+    "after_ids": [
+     "SLP-0816",
+     "SLP-0817",
+     "SLP-0818",
+     "SLP-0819",
+     "SLP-0820",
+     "SLP-0821",
+     "SLP-0822",
+     "SLP-0823",
+     "SLP-0824",
+     "SLP-0825",
+     "SLP-0826",
+     "SLP-0905",
+     "SLP-0906",
+     "SLP-0907",
+     "SLP-0908",
+     "SLP-0909",
+     "SLP-0910",
+     "SLP-0911",
+     "SLP-0912",
+     "SLP-0913",
+     "SLP-0914",
+     "SLP-0915",
+     "SLP-0916",
+     "SLP-0917",
+     "SLP-0918",
+     "SLP-0919",
+     "SLP-0920",
+     "SLP-0921",
+     "SLP-0922",
+     "SLP-0923"
+    ],
+    "short_before": 11,
+    "short_ids": [
+     "SLP-0706",
+     "SLP-0708",
+     "SLP-0801",
+     "SLP-0829",
+     "SLP-0831",
+     "SLP-0902",
+     "SLP-0903",
+     "SLP-0924",
+     "SLP-0925",
+     "SLP-0926",
+     "SLP-0927"
+    ]
+   }
+  },
+  "hypotheses": {
+   "cycle": {
+    "claim": "13 of 16 fatigue logs fall on cycle days 20–28; the pattern repeats in 4 of 4 cycles. This is a repeating phase pattern.",
+    "leading_factor": "cycle_timing",
+    "confidence": 0.64,
+    "evidence_ids": [
+     "SYM-0707-F",
+     "SYM-0709-F",
+     "SYM-0802-F",
+     "SYM-0804-F",
+     "CYC-0614",
+     "CYC-0712",
+     "CYC-0809",
+     "CYC-0906"
+    ],
+    "caveats": []
+   },
+   "lab": {
+    "claim": "Day-21 progesterone 7.9 ng/mL on Aug 1 → 4.2 ng/mL on Sep 26. This lab change is temporally associated with the symptom pattern.",
+    "leading_factor": "lab_change",
+    "confidence": 0.75,
+    "evidence_ids": [
+     "LAB-0801-P4",
+     "LAB-0926-P4"
+    ],
+    "caveats": [
+     "Only 2 comparable samples"
+    ]
+   },
+   "symptom": {
+    "claim": "Fatigue: 5 logs in the 46 days before Spironolactone 50 mg started on Aug 16 → 11 in the 45 days after. The rise lines up with the medication change, and 3 post-change fatigue logs fall outside cycle days 20–28.",
+    "leading_factor": "medication",
+    "confidence": 0.72,
+    "evidence_ids": [
+     "MED-0816",
+     "SYM-0707-F",
+     "SYM-0819-F",
+     "SYM-0822-F",
+     "SYM-0912-F"
+    ],
+    "caveats": [
+     "Other things changed in the same period"
+    ]
+   }
+  },
+  "agent_status": {
+   "cycle": "ok",
+   "lab": "ok",
+   "symptom": "ok"
+  },
+  "discordance": {
+   "conflict": true,
+   "pairs": [
+    {
+     "a": "cycle",
+     "b": "lab",
+     "relation": "compatible",
+     "note": "Progesterone and other luteal-phase labs move with the cycle, so a lab change and cycle timing can point the same way."
+    },
+    {
+     "a": "cycle",
+     "b": "symptom",
+     "relation": "conflict",
+     "note": "Cycle timing vs. medication change as the leading explanation."
+    },
+    {
+     "a": "lab",
+     "b": "symptom",
+     "relation": "conflict",
+     "note": "Lab change vs. medication change as the leading explanation."
+    }
+   ],
+   "active": 3,
+   "distinct_factors": 3
+  },
+  "debate": {
+   "cycle": {
+    "text": "The pattern repeats in 4 of 4 cycles, so timing is the most consistent signal here.",
+    "evidence_ids": [
+     "CYC-0614",
+     "CYC-0712",
+     "CYC-0809",
+     "CYC-0906"
+    ],
+    "revised_confidence": 0.73
+   },
+   "lab": {
+    "text": "Fair challenge: 2 comparable samples can't establish a trend, so I'm lowering my confidence. Also, iron/ferritin and B12 were not measured in the last 91 days, so their status is unknown; they can't be ruled out yet.",
+    "evidence_ids": [
+     "LAB-0801-P4",
+     "LAB-0926-P4"
+    ],
+    "revised_confidence": 0.5
+   },
+   "symptom": {
+    "text": "Timing alone doesn't explain the increase: 3 post-change fatigue logs fall outside cycle days 20–28.",
+    "evidence_ids": [
+     "SYM-0819-F",
+     "SYM-0822-F",
+     "SYM-0912-F"
+    ],
+    "revised_confidence": 0.69
+   }
+  },
+  "verdict": {
+   "single_cause_supported": false,
+   "headline": "Your fatigue follows your cycle, and is also associated with the medication change.",
+   "summary": "3 factors are temporally associated with the fatigue pattern. Your cycle is the most consistent signal; the medication change and a lab change are also associated. Sleep changed too, and no specialist owned it, so it stays an open confounder.",
+   "ranked_factors": [
+    "cycle_timing",
+    "medication",
+    "lab_change"
+   ],
+   "adjustments": [
+    {
+     "agent": "cycle",
+     "before": 0.64,
+     "after": 0.73,
+     "reason": "The pattern repeats in 4 of 4 cycles, so timing is the most consistent signal here"
+    },
+    {
+     "agent": "lab",
+     "before": 0.75,
+     "after": 0.5,
+     "reason": "Fair challenge: 2 comparable samples can't establish a trend, so I'm lowering my confidence"
+    },
+    {
+     "agent": "symptom",
+     "before": 0.72,
+     "after": 0.69,
+     "reason": "Timing alone doesn't explain the increase: 3 post-change fatigue logs fall outside cycle days 20–28"
+    }
+   ],
+   "unassigned_factors": [
+    "Sleep: On comparable nights (outside cycle days 20–28), sleep averaged 7.2 h before Aug 16 → 6.9 h after",
+    "Sleep: 11 of 16 fatigue days followed a night under 6.5 h"
+   ],
+   "alternatives": [
+    "Only 2 comparable samples",
+    "Other things changed in the same period",
+    "Sleep disruption",
+    "Factors that were not logged (stress, workload)"
+   ],
+   "resolve_steps": [
+    "Keep logging through the next late-luteal window to confirm the timing",
+    "Log energy on cycle days 6–13, outside the late-luteal window",
+    "Repeat day-21 progesterone at the same cycle day next cycle",
+    "Ask your clinician whether iron/ferritin or B12 testing makes sense"
+   ],
+   "clinician_questions": [
+    "Could the timing of my fatigue relative to my cycle be relevant?",
+    "Could Spironolactone 50 mg be contributing to my fatigue?",
+    "Should my day-21 progesterone values be evaluated together with these symptoms?",
+    "Would iron/ferritin or B12 testing be useful for me?"
+   ],
+   "overall_confidence": 0.71
+  },
+  "report": {
+   "headline": "Your fatigue follows your cycle, and is also associated with the medication change.",
+   "confidence": 0.71,
+   "confidence_word": "Medium-high",
+   "why_chain": {
+    "sources": {
+     "cycle": 3,
+     "lab": 10,
+     "symptom": 26,
+     "sleep": 89,
+     "med": 1
+    },
+    "observations": [
+     {
+      "id": "F-LAB-2",
+      "statement": "Day-21 progesterone 7.9 ng/mL on Aug 1 → 4.2 ng/mL on Sep 26",
+      "evidence_ids": [
+       "LAB-0801-P4",
+       "LAB-0926-P4"
+      ]
+     },
+     {
+      "id": "F-SYM-1",
+      "statement": "Fatigue: 5 logs in the 46 days before Spironolactone 50 mg started on Aug 16 → 11 in the 45 days after",
+      "evidence_ids": [
+       "MED-0816",
+       "SYM-0707-F",
+       "SYM-0819-F",
+       "SYM-0822-F"
+      ]
+     },
+     {
+      "id": "F-SYM-2",
+      "statement": "3 post-change fatigue logs fall outside cycle days 20–28",
+      "evidence_ids": [
+       "SYM-0819-F",
+       "SYM-0822-F",
+       "SYM-0912-F"
+      ]
+     },
+     {
+      "id": "F-CYC-1",
+      "statement": "13 of 16 fatigue logs fall on cycle days 20–28",
+      "evidence_ids": [
+       "SYM-0707-F",
+       "SYM-0709-F",
+       "SYM-0802-F",
+       "SYM-0804-F"
+      ]
+     },
+     {
+      "id": "F-CYC-2",
+      "statement": "The pattern repeats in 4 of 4 cycles",
+      "evidence_ids": [
+       "CYC-0614",
+       "CYC-0712",
+       "CYC-0809",
+       "CYC-0906"
+      ]
+     }
+    ],
+    "reasoning": "3 factors are temporally associated with the fatigue pattern. Your cycle is the most consistent signal; the medication change and a lab change are also associated. Sleep changed too, and no specialist owned it, so it stays an open confounder.",
+    "confidence": 0.71,
+    "alternatives": [
+     "Only 2 comparable samples",
+     "Other things changed in the same period",
+     "Sleep disruption",
+     "Factors that were not logged (stress, workload)"
+    ]
+   },
+   "agent_views": [
+    {
+     "agent": "lab",
+     "claim": "Day-21 progesterone 7.9 ng/mL on Aug 1 → 4.2 ng/mL on Sep 26. This lab change is temporally associated with the symptom pattern.",
+     "before": 0.75,
+     "after": 0.5
+    },
+    {
+     "agent": "symptom",
+     "claim": "Fatigue: 5 logs in the 46 days before Spironolactone 50 mg started on Aug 16 → 11 in the 45 days after. The rise lines up with the medication change, and 3 post-change fatigue logs fall outside cycle days 20–28.",
+     "before": 0.72,
+     "after": 0.69
+    },
+    {
+     "agent": "cycle",
+     "claim": "13 of 16 fatigue logs fall on cycle days 20–28; the pattern repeats in 4 of 4 cycles. This is a repeating phase pattern.",
+     "before": 0.64,
+     "after": 0.73
+    }
+   ],
+   "experiment": "Keep logging through the next late-luteal window to confirm the timing"
+  },
+  "graph": {
+   "nodes": [
+    {
+     "id": "fat",
+     "label": "Fatigue",
+     "sub": "16 logs",
+     "type": "symptom"
+    },
+    {
+     "id": "lut",
+     "label": "Late luteal",
+     "sub": "days 20–28",
+     "type": "cycle"
+    },
+    {
+     "id": "med",
+     "label": "Spironolactone",
+     "sub": "from Aug 16",
+     "type": "med"
+    },
+    {
+     "id": "p4",
+     "label": "Progesterone ↓",
+     "sub": "day 21",
+     "type": "lab"
+    },
+    {
+     "id": "slp",
+     "label": "Short sleep",
+     "sub": "< 6.5 h",
+     "type": "sleep"
+    },
+    {
+     "id": "anx",
+     "label": "Anxiety",
+     "sub": "4 logs",
+     "type": "symptom"
+    },
+    {
+     "id": "iron",
+     "label": "iron/ferritin / B12",
+     "sub": "not measured",
+     "type": "ghost"
+    }
+   ],
+   "edges": [
+    {
+     "a": "lut",
+     "b": "fat",
+     "type": "Temporal association",
+     "evidence": "13 of 16 fatigue logs",
+     "evidence_ids": [
+      "SYM-0707-F",
+      "SYM-0709-F",
+      "SYM-0802-F",
+      "SYM-0804-F",
+      "SYM-0806-F",
+      "SYM-0830-F"
+     ],
+     "window": "Cycle days 20–28, 4 of 4 cycles",
+     "agent": "cycle",
+     "confidence": 0.73,
+     "alternatives": [
+      "Sleep was also shorter in this window",
+      "Symptoms may be noticed more late in the cycle"
+     ]
+    },
+    {
+     "a": "med",
+     "b": "fat",
+     "type": "Before / after association",
+     "evidence": "5 → 11 fatigue logs",
+     "evidence_ids": [
+      "MED-0816",
+      "SYM-0819-F",
+      "SYM-0822-F",
+      "SYM-0830-F",
+      "SYM-0901-F",
+      "SYM-0903-F"
+     ],
+     "window": "46 days before vs 45 days after Aug 16",
+     "agent": "symptom",
+     "confidence": 0.69,
+     "alternatives": [
+      "Sleep also changed after the start date",
+      "Only one medication change observed"
+     ]
+    },
+    {
+     "a": "p4",
+     "b": "fat",
+     "type": "Co-occurrence",
+     "evidence": "7.9 → 4.2 ng/mL, 2 samples",
+     "evidence_ids": [
+      "LAB-0801-P4",
+      "LAB-0926-P4"
+     ],
+     "window": "Aug 1 vs Sep 26",
+     "agent": "lab",
+     "confidence": 0.5,
+     "alternatives": [
+      "Normal cycle-to-cycle variation",
+      "Single-sample lab noise"
+     ]
+    },
+    {
+     "a": "slp",
+     "b": "fat",
+     "type": "Co-occurrence (not assessed by an agent)",
+     "evidence": "11 of 16 fatigue days followed a night under 6.5 h",
+     "evidence_ids": [
+      "SLP-0706",
+      "SLP-0708",
+      "SLP-0801",
+      "SLP-0829",
+      "SLP-0831",
+      "SLP-0902"
+     ],
+     "window": "The night before",
+     "agent": null,
+     "confidence": null,
+     "alternatives": [
+      "The link could run the other way",
+      "Both may follow cycle timing"
+     ]
+    },
+    {
+     "a": "lut",
+     "b": "slp",
+     "type": "Temporal association (not assessed by an agent)",
+     "evidence": "Late-luteal nights 6.1 h vs 7.0 h",
+     "evidence_ids": [
+      "SLP-0702",
+      "SLP-0703",
+      "SLP-0704",
+      "SLP-0705",
+      "SLP-0706",
+      "SLP-0707"
+     ],
+     "window": "Cycle days 20–28",
+     "agent": null,
+     "confidence": null,
+     "alternatives": [
+      "Stress or schedule changes were not logged"
+     ]
+    },
+    {
+     "a": "med",
+     "b": "slp",
+     "type": "Before / after association (not assessed by an agent)",
+     "evidence": "Average sleep 7.2 h → 6.9 h",
+     "evidence_ids": [
+      "SLP-0816",
+      "SLP-0817",
+      "SLP-0818",
+      "SLP-0819",
+      "SLP-0820",
+      "SLP-0821"
+     ],
+     "window": "Nights outside days 20–28, before vs after Aug 16",
+     "agent": null,
+     "confidence": null,
+     "alternatives": [
+      "Seasonal or schedule change"
+     ]
+    },
+    {
+     "a": "fat",
+     "b": "anx",
+     "type": "Co-occurrence (not assessed by an agent)",
+     "evidence": "4 of 4 anxiety logs within a day of fatigue",
+     "evidence_ids": [
+      "SYM-0803-A",
+      "SYM-0901-A",
+      "SYM-0924-A",
+      "SYM-0927-A"
+     ],
+     "window": "± 1 day",
+     "agent": null,
+     "confidence": null,
+     "alternatives": [
+      "Few logs so far"
+     ]
+    },
+    {
+     "a": "iron",
+     "b": "fat",
+     "type": "Untested",
+     "agent": null,
+     "confidence": null,
+     "evidence": "Iron/ferritin and B12 not measured in the last 91 days",
+     "evidence_ids": [],
+     "window": "—",
+     "alternatives": [
+      "Ask a clinician whether testing would help"
+     ]
+    }
+   ]
+  },
+  "brief": {
+   "observations": [
+    {
+     "kind": "symptom",
+     "title": "Symptom clustering",
+     "text": "13 of 16 fatigue logs fell on cycle days 20–28, across 4 of 4 cycles observed."
+    },
+    {
+     "kind": "lab",
+     "title": "Laboratory measurements",
+     "text": "Day-21 progesterone 7.9 → 4.2 ng/mL (Aug 1 vs Sep 26); Day-21 estradiol 132 → 141 pg/mL (Aug 1 vs Sep 26), stable; Day-25 TSH 2.6 → 2.4 mIU/L (Jul 8 vs Sep 2), stable; iron/ferritin and B12 not measured in the last 91 days."
+    },
+    {
+     "kind": "med",
+     "title": "Medication timing",
+     "text": "Fatigue logs rose from 5 in the 46 days before starting Spironolactone 50 mg (Aug 16) to 11 in the 45 days after."
+    },
+    {
+     "kind": "sleep",
+     "title": "Sleep",
+     "text": "On nights outside cycle days 20–28, average sleep went from 7.2 h before Aug 16 to 6.9 h after; late-luteal nights averaged 6.1 h vs 7.0 h on other nights."
+    }
+   ],
+   "observed": [
+    "13 of 16 fatigue logs fell on cycle days 20–28, across 4 of 4 cycles observed.",
+    "Day-21 progesterone 7.9 → 4.2 ng/mL (Aug 1 vs Sep 26); Day-21 estradiol 132 → 141 pg/mL (Aug 1 vs Sep 26), stable; Day-25 TSH 2.6 → 2.4 mIU/L (Jul 8 vs Sep 2), stable; iron/ferritin and B12 not measured in the last 91 days.",
+    "Fatigue logs rose from 5 in the 46 days before starting Spironolactone 50 mg (Aug 16) to 11 in the 45 days after.",
+    "On nights outside cycle days 20–28, average sleep went from 7.2 h before Aug 16 to 6.9 h after; late-luteal nights averaged 6.1 h vs 7.0 h on other nights."
+   ],
+   "interpretation": "3 factors are temporally associated with the fatigue pattern. Your cycle is the most consistent signal; the medication change and a lab change are also associated. Sleep changed too, and no specialist owned it, so it stays an open confounder.",
+   "questions": [
+    "Could the timing of my fatigue relative to my cycle be relevant?",
+    "Could Spironolactone 50 mg be contributing to my fatigue?",
+    "Should my day-21 progesterone values be evaluated together with these symptoms?",
+    "Would iron/ferritin or B12 testing be useful for me?"
+   ],
+   "footer": "Not a diagnosis. Hormony surfaces time-based associations in self-reported and uploaded data so you can have a better-informed conversation with your clinician.",
+   "text": "ENDOCRINE INSIGHT REPORT\n\nOBSERVED PATTERNS\n1. Symptom clustering: 13 of 16 fatigue logs fell on cycle days 20–28, across 4 of 4 cycles observed.\n2. Laboratory measurements: Day-21 progesterone 7.9 → 4.2 ng/mL (Aug 1 vs Sep 26); Day-21 estradiol 132 → 141 pg/mL (Aug 1 vs Sep 26), stable; Day-25 TSH 2.6 → 2.4 mIU/L (Jul 8 vs Sep 2), stable; iron/ferritin and B12 not measured in the last 91 days.\n3. Medication timing: Fatigue logs rose from 5 in the 46 days before starting Spironolactone 50 mg (Aug 16) to 11 in the 45 days after.\n4. Sleep: On nights outside cycle days 20–28, average sleep went from 7.2 h before Aug 16 to 6.9 h after; late-luteal nights averaged 6.1 h vs 7.0 h on other nights.\n\nSYSTEM INTERPRETATION\n3 factors are temporally associated with the fatigue pattern. Your cycle is the most consistent signal; the medication change and a lab change are also associated. Sleep changed too, and no specialist owned it, so it stays an open confounder.\n\nQUESTIONS FOR MY CLINICIAN\n• Could the timing of my fatigue relative to my cycle be relevant?\n• Could Spironolactone 50 mg be contributing to my fatigue?\n• Should my day-21 progesterone values be evaluated together with these symptoms?\n• Would iron/ferritin or B12 testing be useful for me?\n\nNot a diagnosis. Hormony surfaces time-based associations in self-reported and uploaded data so you can have a better-informed conversation with your clinician."
+  }
+ },
+ "event_log": [
+  {
+   "type": "step",
+   "index": 0,
+   "label": "Scoping your evidence ledger",
+   "llm": "demo"
+  },
+  {
+   "type": "ledger",
+   "counts": {
+    "cycle": 3,
+    "lab": 10,
+    "symptom": 26,
+    "sleep": 89,
+    "med": 1
+   }
+  },
+  {
+   "type": "step",
+   "index": 1,
+   "label": "Specialists analyzing independently"
+  },
+  {
+   "type": "thought",
+   "agent": "lab",
+   "text": "10 lab values across 4 blood draws"
+  },
+  {
+   "type": "thought",
+   "agent": "symptom",
+   "text": "Fatigue: 5 logs in the 46 days before Spironolactone 50 mg started on Aug 16 → 11 in the 45 days after"
+  },
+  {
+   "type": "thought",
+   "agent": "cycle",
+   "text": "13 of 16 fatigue logs fall on cycle days 20–28"
+  },
+  {
+   "type": "thought",
+   "agent": "lab",
+   "text": "Day-21 progesterone 7.9 ng/mL on Aug 1 → 4.2 ng/mL on Sep 26"
+  },
+  {
+   "type": "thought",
+   "agent": "symptom",
+   "text": "3 post-change fatigue logs fall outside cycle days 20–28"
+  },
+  {
+   "type": "thought",
+   "agent": "cycle",
+   "text": "The pattern repeats in 4 of 4 cycles"
+  },
+  {
+   "type": "thought",
+   "agent": "lab",
+   "text": "Day-21 estradiol 132 pg/mL on Aug 1 → 141 pg/mL on Sep 26 (stable)"
+  },
+  {
+   "type": "thought",
+   "agent": "symptom",
+   "text": "Anxiety appeared within a day of fatigue in 4 of 4 logs"
+  },
+  {
+   "type": "thought",
+   "agent": "cycle",
+   "text": "Late-luteal nights average 6.1 h vs 7.0 h on other nights"
+  },
+  {
+   "type": "hypothesis",
+   "agent": "cycle",
+   "claim": "13 of 16 fatigue logs fall on cycle days 20–28; the pattern repeats in 4 of 4 cycles. This is a repeating phase pattern.",
+   "leading_factor": "cycle_timing",
+   "confidence": 0.64,
+   "evidence_ids": [
+    "SYM-0707-F",
+    "SYM-0709-F",
+    "SYM-0802-F",
+    "SYM-0804-F",
+    "CYC-0614",
+    "CYC-0712",
+    "CYC-0809",
+    "CYC-0906"
+   ]
+  },
+  {
+   "type": "hypothesis",
+   "agent": "lab",
+   "claim": "Day-21 progesterone 7.9 ng/mL on Aug 1 → 4.2 ng/mL on Sep 26. This lab change is temporally associated with the symptom pattern.",
+   "leading_factor": "lab_change",
+   "confidence": 0.75,
+   "evidence_ids": [
+    "LAB-0801-P4",
+    "LAB-0926-P4"
+   ]
+  },
+  {
+   "type": "hypothesis",
+   "agent": "symptom",
+   "claim": "Fatigue: 5 logs in the 46 days before Spironolactone 50 mg started on Aug 16 → 11 in the 45 days after. The rise lines up with the medication change, and 3 post-change fatigue logs fall outside cycle days 20–28.",
+   "leading_factor": "medication",
+   "confidence": 0.72,
+   "evidence_ids": [
+    "MED-0816",
+    "SYM-0707-F",
+    "SYM-0819-F",
+    "SYM-0822-F",
+    "SYM-0912-F"
+   ]
+  },
+  {
+   "type": "step",
+   "index": 2,
+   "label": "Discordance engine comparing conclusions"
+  },
+  {
+   "type": "discordance",
+   "conflict": true,
+   "pairs": [
+    {
+     "a": "cycle",
+     "b": "lab",
+     "relation": "compatible",
+     "note": "Progesterone and other luteal-phase labs move with the cycle, so a lab change and cycle timing can point the same way."
+    },
+    {
+     "a": "cycle",
+     "b": "symptom",
+     "relation": "conflict",
+     "note": "Cycle timing vs. medication change as the leading explanation."
+    },
+    {
+     "a": "lab",
+     "b": "symptom",
+     "relation": "conflict",
+     "note": "Lab change vs. medication change as the leading explanation."
+    }
+   ],
+   "active": 3,
+   "distinct_factors": 3
+  },
+  {
+   "type": "step",
+   "index": 3,
+   "label": "Agents debating the evidence"
+  },
+  {
+   "type": "message",
+   "agent": "cycle",
+   "text": "The pattern repeats in 4 of 4 cycles, so timing is the most consistent signal here.",
+   "evidence_ids": [
+    "CYC-0614",
+    "CYC-0712",
+    "CYC-0809",
+    "CYC-0906"
+   ],
+   "revised_confidence": 0.73
+  },
+  {
+   "type": "message",
+   "agent": "lab",
+   "text": "Fair challenge: 2 comparable samples can't establish a trend, so I'm lowering my confidence. Also, iron/ferritin and B12 were not measured in the last 91 days, so their status is unknown; they can't be ruled out yet.",
+   "evidence_ids": [
+    "LAB-0801-P4",
+    "LAB-0926-P4"
+   ],
+   "revised_confidence": 0.5
+  },
+  {
+   "type": "message",
+   "agent": "symptom",
+   "text": "Timing alone doesn't explain the increase: 3 post-change fatigue logs fall outside cycle days 20–28.",
+   "evidence_ids": [
+    "SYM-0819-F",
+    "SYM-0822-F",
+    "SYM-0912-F"
+   ],
+   "revised_confidence": 0.69
+  },
+  {
+   "type": "step",
+   "index": 4,
+   "label": "Reasoning critic reviewing"
+  },
+  {
+   "type": "verdict",
+   "single_cause_supported": false,
+   "headline": "Your fatigue follows your cycle, and is also associated with the medication change.",
+   "summary": "3 factors are temporally associated with the fatigue pattern. Your cycle is the most consistent signal; the medication change and a lab change are also associated. Sleep changed too, and no specialist owned it, so it stays an open confounder.",
+   "ranked_factors": [
+    "cycle_timing",
+    "medication",
+    "lab_change"
+   ],
+   "adjustments": [
+    {
+     "agent": "cycle",
+     "before": 0.64,
+     "after": 0.73,
+     "reason": "The pattern repeats in 4 of 4 cycles, so timing is the most consistent signal here"
+    },
+    {
+     "agent": "lab",
+     "before": 0.75,
+     "after": 0.5,
+     "reason": "Fair challenge: 2 comparable samples can't establish a trend, so I'm lowering my confidence"
+    },
+    {
+     "agent": "symptom",
+     "before": 0.72,
+     "after": 0.69,
+     "reason": "Timing alone doesn't explain the increase: 3 post-change fatigue logs fall outside cycle days 20–28"
+    }
+   ],
+   "unassigned_factors": [
+    "Sleep: On comparable nights (outside cycle days 20–28), sleep averaged 7.2 h before Aug 16 → 6.9 h after",
+    "Sleep: 11 of 16 fatigue days followed a night under 6.5 h"
+   ],
+   "alternatives": [
+    "Only 2 comparable samples",
+    "Other things changed in the same period",
+    "Sleep disruption",
+    "Factors that were not logged (stress, workload)"
+   ],
+   "resolve_steps": [
+    "Keep logging through the next late-luteal window to confirm the timing",
+    "Log energy on cycle days 6–13, outside the late-luteal window",
+    "Repeat day-21 progesterone at the same cycle day next cycle",
+    "Ask your clinician whether iron/ferritin or B12 testing makes sense"
+   ],
+   "clinician_questions": [
+    "Could the timing of my fatigue relative to my cycle be relevant?",
+    "Could Spironolactone 50 mg be contributing to my fatigue?",
+    "Should my day-21 progesterone values be evaluated together with these symptoms?",
+    "Would iron/ferritin or B12 testing be useful for me?"
+   ],
+   "overall_confidence": 0.71
+  },
+  {
+   "type": "done",
+   "analysis_id": "afc17bfd-dfc8-430a-9c18-3348b82afa91"
+  }
+ ]
+}
