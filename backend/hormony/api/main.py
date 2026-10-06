@@ -6,11 +6,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from ..agents.llm import LLMConfigError, provider_name, resolve_vision_llm
+from ..auth import check_secret
 from ..config import settings
 from ..db import db_ok, init_db
 from .routes_analyses import router as analyses_router
-from .routes_events import router as events_router
 from .routes_auth import router as auth_router
+from .routes_events import router as events_router
 from .routes_profiles import router as profiles_router
 from .routes_reports import router as reports_router
 
@@ -53,6 +54,7 @@ async def lifespan(app: FastAPI):
 
 
 def create_app() -> FastAPI:
+    check_secret()  # refuse to start with a missing or guessable token secret: anyone could sign in as anyone
     app = FastAPI(title="Hormony API", lifespan=lifespan)
     app.add_middleware(ErrorsAsJson)
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])  # outermost

@@ -14,6 +14,7 @@ from hormony.config import Settings
 from hormony.reports.analytes import normalize
 from hormony.reports.extract import ReportExtraction, ReportRow
 from hormony.reports.rules import extract_rules
+from tests.conftest import make_user
 from tests.pdfutil import LAB_REPORT, make_pdf, make_png
 
 
@@ -50,6 +51,7 @@ def client(seeded, monkeypatch):
         monkeypatch.setattr(routes_reports, "vision_llm", lambda: vision)
     use()
     with TestClient(create_app(), raise_server_exceptions=False) as c:
+        c.headers.update(make_user())
         c.use = use
         yield c
 

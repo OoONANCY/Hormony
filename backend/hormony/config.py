@@ -28,7 +28,8 @@ class Settings(BaseSettings):
     uploads_dir: str = "uploads"          # original report files, kept locally for provenance
     today: str = "2026-09-29"             # the demo profile's frozen date; personal profiles use the real date
     demo_replay: bool = False
-    auth_secret: str = "change-this-secret-in-env"
+    # Signs sign-in tokens. Required: the server refuses to start without a random value of 32+ characters.
+    auth_secret: str = ""
 
 
     @property

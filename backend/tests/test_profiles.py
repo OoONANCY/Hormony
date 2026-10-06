@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from hormony.api.main import create_app
 from hormony.ledger import profiles
+from tests.conftest import make_user
 
 REAL_TODAY = date(2026, 10, 6)
 
@@ -14,6 +15,7 @@ REAL_TODAY = date(2026, 10, 6)
 def client(seeded, monkeypatch):
     monkeypatch.setattr(profiles, "real_today", lambda: REAL_TODAY)
     with TestClient(create_app(), raise_server_exceptions=False) as c:
+        c.headers.update(make_user())
         yield c
 
 
@@ -62,7 +64,14 @@ def test_deleting_a_personal_profile_removes_all_of_its_data(client):
     client.post(f"/patients/{pid}/events", json={"type": "symptom", "name": "Fatigue", "severity": 5})
     assert client.delete(f"/profiles/{pid}").status_code == 204
     assert pid not in [x["id"] for x in client.get("/profiles").json()]
-    assert client.get(f"/patients/{pid}/timeline").json()["events"] == []
+    assert client.get(f"/patients/{pid}/timeline").status_code == 404                # gone, for everyone
+    from hormony.db import SessionLocal
+    from hormony.models import Event
+    db = SessionLocal()
+    try:
+        assert db.query(Event).filter(Event.patient_id == pid).count() == 0
+    finally:
+        db.close()
     assert client.delete("/profiles/nancy").status_code == 400                     # the demo can't be deleted
     assert client.get("/profiles/nope").status_code == 404
 

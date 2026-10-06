@@ -68,12 +68,56 @@ def _rekey(eng, table) -> None:
         conn.execute(text(f"DROP TABLE {name}_old"))
 
 
+NEW_COLUMNS = (("profiles", "owner_id", "VARCHAR(36)"), ("analysis_runs", "user_id", "VARCHAR(36)"))
+
+
+def add_new_columns(eng) -> None:
+    """Columns added after a table first shipped (create_all only creates missing tables, not columns)."""
+    insp = inspect(eng)
+    tables = set(insp.get_table_names())
+    with eng.begin() as conn:
+        for table, column, ddl in NEW_COLUMNS:
+            if table in tables and column not in {c["name"] for c in insp.get_columns(table)}:
+                conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}"))
+            if table in tables:
+                conn.execute(text(f"CREATE INDEX IF NOT EXISTS ix_{table}_{column} ON {table} ({column})"))
+
+
+def migrate_legacy_users(eng) -> None:
+    """The first auth build gave each user exactly one `patient_id`. Turn each into a profile that user owns,
+    then drop the column, so every user keeps their record."""
+    from .models import User
+    insp = inspect(eng)
+    if "users" not in insp.get_table_names() or "patient_id" not in {c["name"] for c in insp.get_columns("users")}:
+        return
+    with eng.begin() as conn:
+        for uid, pid in conn.execute(text("SELECT id, patient_id FROM users WHERE patient_id IS NOT NULL")).all():
+            if conn.execute(text("SELECT 1 FROM profiles WHERE id = :p"), {"p": pid}).first():
+                conn.execute(text("UPDATE profiles SET owner_id = :u WHERE id = :p AND owner_id IS NULL"), {"u": uid, "p": pid})
+            else:
+                conn.execute(text("INSERT INTO profiles (id, name, kind, cycle_length, owner_id) "
+                                  "VALUES (:p, :n, 'personal', 28, :u)"), {"p": pid, "n": pid, "u": uid})
+        if eng.dialect.name != "sqlite":
+            conn.execute(text("ALTER TABLE users DROP COLUMN patient_id"))
+            return
+        names = [c.name for c in User.__table__.columns]
+        picks = ", ".join("COALESCE(created_at, CURRENT_TIMESTAMP)" if n == "created_at" else n for n in names)
+        for ix in insp.get_indexes("users"):
+            conn.execute(text('DROP INDEX "{}"'.format(ix["name"])))
+        conn.execute(text("ALTER TABLE users RENAME TO users_old"))
+        User.__table__.create(bind=conn)
+        conn.execute(text(f"INSERT INTO users ({', '.join(names)}) SELECT {picks} FROM users_old"))
+        conn.execute(text("DROP TABLE users_old"))
+
+
 def init_db() -> None:
     from . import models
     from .ledger.cycle import LEGACY_TYPES
     try:
         Base.metadata.create_all(bind=engine)
         migrate_event_keys(engine)
+        add_new_columns(engine)
+        migrate_legacy_users(engine)
         with engine.begin() as conn:  # earlier builds stored short type codes; normalise them once
             for old, new in LEGACY_TYPES.items():
                 conn.execute(update(models.Event).where(models.Event.type == old).values(type=new))

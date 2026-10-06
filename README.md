@@ -25,7 +25,8 @@ Expo app (iOS / Android / web)
   └─ WebView running app/web/hormony-app.html  ── haptics, share, clipboard, back button via a native bridge
         │  REST + Server-Sent Events
 FastAPI backend (backend/)
-  ├─ Profiles: a frozen-date demo + personal records on the real date, each with its own cycle length
+  ├─ Accounts: email + password (argon2), 24-hour signed tokens · each account owns its profiles
+  ├─ Profiles: a shared, read-only demo + personal records on the real date, each with its own cycle length
   ├─ Evidence ledger (SQLite or PostgreSQL) ── CSV/JSON import + lab reports, all with provenance
   ├─ Report reader: PDF text → text LLM (or rules) · photos/scans → vision LLM · you confirm before saving
   ├─ compute_stats(): every number, date and analyte, computed in Python
@@ -35,6 +36,7 @@ FastAPI backend (backend/)
 ```
 
 - **Agents interpret facts; they never compute them.** Each specialist sees only its own facts.
+- **Every record has an owner:** you can read your own profiles and the shared demo. Someone else's profile, analysis or report answers "not found", and only the owner can change a profile.
 - **Provenance guard:** evidence IDs that aren't in the ledger are removed, and confidence is capped when nothing verifiable remains.
 - **Single run:** each analysis runs the graph exactly once (7 LLM calls). The result you see streaming is the result that gets saved.
 
@@ -52,7 +54,8 @@ backend/                 FastAPI + LangGraph
   hormony/ledger/        Cycle maths, profiles, ledger access, importer, demo seed
   hormony/reports/       Lab-report reading: PDF text, page images, analyte names, rule-based fallback
   hormony/outputs/       Report, why-chain, hypothesis graph, clinician brief
-  hormony/api/           HTTP routes (profiles, events, reports, analyses + SSE)
+  hormony/auth.py        Accounts: passwords, tokens, and who may read or change which profile
+  hormony/api/           HTTP routes (auth, profiles, events, reports, analyses + SSE)
   uploads/               Original uploaded reports, one folder per profile (gitignored: personal health data)
   sample_data/           Example CSV + recorded demo run (for replay mode)
   tests/                 Offline test suite
@@ -75,6 +78,7 @@ cd backend
 python3 -m venv .venv
 .venv/bin/pip install -e ".[dev]"
 cp .env.example .env                        # then set your LLM provider/key (see below)
+echo "HORMONY_AUTH_SECRET=$(.venv/bin/python -c 'import secrets; print(secrets.token_urlsafe(48))')" >> .env
 .venv/bin/python -m hormony.ledger.seed     # optional: the demo profile "Nancy" (130 example records)
 .venv/bin/python -m uvicorn hormony.api.main:app --host 0.0.0.0 --port 8000
 ```
@@ -87,7 +91,7 @@ curl localhost:8000/health
 #  "vision": "openrouter:nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"}
 ```
 
-Existing databases are upgraded in place when the backend starts (no data is lost).
+Existing databases are upgraded in place when the backend starts (no data is lost). The server refuses to start without `HORMONY_AUTH_SECRET`: with a missing or default secret, anyone could sign in as anyone.
 
 ### 2. App on your phone (Expo Go)
 
@@ -128,12 +132,15 @@ Set these in `backend/.env`. Real environment variables override the file.
 
 ## Your record and the demo
 
+- **Accounts:** sign up with an email and a password (8+ characters). Each account sees only its own profiles plus the demo. After 5 wrong passwords, sign-in for that email pauses for 15 minutes. Profiles created before this server had accounts belong to the first account registered on it.
+
 - **Your own record** starts empty. Setup asks for three things: a name, the day your last period started (within the last 120 days), and your usual cycle length (21–45 days). It runs on the real date, and cycle phases and the late-luteal window follow your cycle length. XP, streaks and badges start at zero and are kept per profile on that phone.
 - **Lab reports:** + → Lab report, or Me → Upload a lab report. Pick a PDF or image, or take a photo. Hormony shows what it read: you can untick rows, fix values, units or the collection date, and nothing is saved until you confirm. Each saved value's source is `Lab report: <file>`, and its record sheet has **Open the original report**. Uploading the same file again is detected. Files are stored under `backend/uploads/<profile>/`.
 - **Delete my data** (Me) removes the profile's records, analyses and uploaded files from the server.
 
 ## Demo data and modes
 
+- **The demo is shared and read-only on the server:** anyone signed in can view and analyse it, but what you log there stays on your phone, so one person's entries never show up for another.
 - **The "nancy" profile is fictional demo data** ported from the original prototype: 91 days of labs, symptoms, sleep, 4 cycles and one medication change, with a deliberate conflict for the agents to debate. The app's "today" is fixed at `HORMONY_TODAY=2026-09-29` to match it.
 - **Reset the demo:** `.venv/bin/python -m hormony.ledger.seed` (this replaces nancy's records).
 - **Replay mode:** `HORMONY_DEMO_REPLAY=1` replays a recorded analysis (`sample_data/golden_run.json`) with realistic pacing, without any LLM calls. Paused agents are respected. Good as a backup for live demos.
@@ -147,14 +154,19 @@ Set these in `backend/.env`. Real environment variables override the file.
 
 ## API
 
+Everything except `/health`, `/auth/register`, `/auth/login` and report links needs `Authorization: Bearer <access_token>`.
+
 | Method | Path | |
 |---|---|---|
 | GET | `/health` | Database status, active LLM provider and the vision model (or `null`) |
-| GET / POST | `/profiles` | List profiles, or create one: `{name, last_period_start, cycle_length}` |
+| POST | `/auth/register`, `/auth/login` | `{email, password}`, returns `{access_token, expires_in, user_id, email}` |
+| GET | `/auth/me` | The signed-in account |
+| GET / POST | `/profiles` | Your profiles plus the demo, or create one: `{name, last_period_start, cycle_length}` |
 | GET / DELETE | `/profiles/{id}` | One profile with record counts, or delete a personal profile and all its data |
 | POST | `/patients/{id}/reports` | Upload a PDF or image (≤ 15 MB). Returns the extracted rows for review; nothing is saved yet |
 | POST | `/patients/{id}/reports/{report}/confirm` | `{rows: [...]}`, the reviewed rows. Saves them as lab records linked to the file |
 | GET | `/patients/{id}/reports/{report}/file` | The original uploaded file |
+| POST | `/patients/{id}/reports/{report}/link` | A 5-minute link (`/reports/files/<token>`) that opens the file without the header, e.g. in a phone browser |
 | GET | `/patients/{id}/timeline?days=91&types=lab,symptom` | Events with cycle day and phase, plus cycle starts |
 | GET | `/patients/{id}/summary` | Counts per type |
 | POST | `/patients/{id}/events` | Add one record (check-ins, manual logs) |
@@ -178,6 +190,7 @@ cd app && yarn test                                  # bundles the UI + TypeScri
 | "Can't reach Hormony" on launch | Same cause as below. Your own record is never replaced by demo data; tap **Try again** once the backend is up |
 | App says "Offline · showing demo data" | The phone can't reach the API. Check that both are on the same Wi-Fi, that `EXPO_PUBLIC_API_URL` uses the laptop's IP (not `localhost`), and that the macOS firewall allows incoming connections for Python and Node |
 | "Project is incompatible with this version of Expo Go" | Update Expo Go (the project uses SDK 57) |
+| Backend won't start: `HORMONY_AUTH_SECRET must be ...` | Add a secret to `backend/.env` (the `echo` line in Quick start), then start it again |
 | `/health` shows `misconfigured: ...` | Fix the key or provider named in the message in `backend/.env`, then restart the backend |
 | An agent shows "Unavailable" | Usually a provider rate limit; the other agents and the critic still finish |
 | A photo of a report is refused | Photos and scanned PDFs need a vision model: set `OPENROUTER_API_KEY` (and optionally `HORMONY_VISION_MODEL`) and restart the backend. HEIC images can't be read; share the photo as JPEG |
@@ -186,8 +199,8 @@ cd app && yarn test                                  # bundles the UI + TypeScri
 ## Roadmap
 
 Next up:
-- Authentication, so a profile belongs to an account instead of a device.
+- Password reset and email verification.
 - Reminders for check-ins and for experiments the critic suggests.
 
 Later:
-- FHIR/EHR import, a digital twin, prediction, a wider set of agents, authentication, and a clinician workflow.
+- FHIR/EHR import, a digital twin, prediction, a wider set of agents, and a clinician workflow.

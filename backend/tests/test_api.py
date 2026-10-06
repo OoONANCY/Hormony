@@ -8,7 +8,7 @@ from fastapi.testclient import TestClient
 
 from hormony.api.main import create_app
 from hormony.config import settings
-from tests.conftest import add_event
+from tests.conftest import add_event, make_user
 
 
 SAMPLE_CSV = os.path.join(
@@ -21,32 +21,8 @@ SAMPLE_CSV = os.path.join(
 
 @pytest.fixture()
 def client(seeded):
-    from hormony.models import User
-    from hormony.auth import hash_password, create_access_token
-    from hormony.db import SessionLocal
-
-    db = SessionLocal()
-    try:
-        user = db.query(User).filter(User.email == "test@example.com").first()
-
-        if not user:
-            user = User(
-                email="test@example.com",
-                password_hash=hash_password("Test1234!"),
-                patient_id="nancy",
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
-
-        user_id = user.id
-    finally:
-        db.close()
-
-    token = create_access_token(user_id)
-
     with TestClient(create_app(), raise_server_exceptions=False) as c:
-        c.headers.update({"Authorization": f"Bearer {token}"})
+        c.headers.update(make_user())
         yield c
 
 
@@ -127,52 +103,10 @@ def test_only_period_starts_move_the_cycle(client):
 
 
 def test_cycle_starts_come_from_each_patients_own_data(client):
-    from hormony.models import User
-    from hormony.auth import hash_password, create_access_token
-    from hormony.db import SessionLocal
-
-    add_event(
-        id="CYC-0910",
-        patient_id="bob",
-        date="2026-09-10",
-        type="cycle",
-        name="Period started",
-    )
-
-    db = SessionLocal()
-    try:
-        bob = (
-            db.query(User)
-            .filter(User.email == "bob@example.com")
-            .first()
-        )
-
-        if not bob:
-            bob = User(
-                email="bob@example.com",
-                password_hash=hash_password("Test1234!"),
-                patient_id="bob",
-            )
-            db.add(bob)
-            db.commit()
-            db.refresh(bob)
-
-        token = create_access_token(bob.id)
-    finally:
-        db.close()
-
-    with TestClient(
-        create_app(),
-        raise_server_exceptions=False,
-    ) as bob_client:
-        bob_client.headers.update(
-            {"Authorization": f"Bearer {token}"}
-        )
-
-        response = bob_client.get(
-            "/patients/bob/timeline"
-        )
-
+    add_event(id="CYC-0910", patient_id="bob", date="2026-09-10", type="cycle", name="Period started")
+    with TestClient(create_app(), raise_server_exceptions=False) as bob_client:
+        bob_client.headers.update(make_user("bob@example.com", owns=("bob",)))
+        response = bob_client.get("/patients/bob/timeline")
     assert response.status_code == 200, response.text
     assert response.json()["cycle_starts"] == ["2026-09-10"]
 

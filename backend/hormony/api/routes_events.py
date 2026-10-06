@@ -8,7 +8,7 @@ import math
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
-from ..auth import get_current_user
+from ..auth import get_current_user, readable_profile, writable_profile
 from ..db import get_db
 from ..ledger import cycle as cyc
 from ..ledger.importer import import_rows
@@ -21,17 +21,6 @@ router = APIRouter()
 
 TYPES = {"cycle", "lab", "symptom", "sleep", "med"}
 PREFIX = {"cycle": "CYC", "lab": "LAB", "symptom": "SYM", "sleep": "SLP", "med": "MED"}
-def _require_patient(pid: str, user_id: str, db: Session) -> None:
-    user = db.query(User).filter(User.id == user_id).first()
-
-    if not user:
-        raise HTTPException(status_code=401, detail="User not found")
-
-    if user.patient_id != pid:
-        raise HTTPException(
-            status_code=403,
-            detail="You do not have access to this patient",
-        )
 
 
 def _rows(db: Session, pid: str):
@@ -43,10 +32,10 @@ def timeline(
     pid: str,
     days: int = Query(91, ge=1, le=3660),
     types: str = "",
-    current_user: str = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    _require_patient(pid, current_user, db)
+    readable_profile(pid, user)
     today = today_for(pid)
     rows = _rows(db, pid)
     starts = cyc.period_starts(rows)
@@ -64,10 +53,10 @@ def timeline(
 @router.get("/patients/{pid}/summary", response_model=SummaryOut)
 def summary(
     pid: str,
-    current_user: str = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-    ):
-    _require_patient(pid, current_user, db)
+):
+    readable_profile(pid, user)
     rows = _rows(db, pid)
     counts = {k: 0 for k in sorted(TYPES)}
     for r in rows:
@@ -79,10 +68,10 @@ def summary(
 def create_event(
     pid: str,
     body: EventIn,
-    current_user: str = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    _require_patient(pid, current_user, db)
+    writable_profile(pid, user)
     t = cyc.canon_type((body.type or "").strip().lower())
     if t not in TYPES:
         raise HTTPException(400, f"unknown type {body.type!r}")
@@ -118,10 +107,10 @@ def create_event(
 async def import_file(
     pid: str,
     file: UploadFile = File(...),
-    current_user: str = Depends(get_current_user),
+    user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    _require_patient(pid, current_user, db)
+    writable_profile(pid, user)
     raw = await file.read()
     name = (file.filename or "").lower()
     try:
