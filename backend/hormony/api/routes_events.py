@@ -9,10 +9,10 @@ from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
-from ..config import settings
 from ..db import get_db
 from ..ledger import cycle as cyc
 from ..ledger.importer import import_rows
+from ..ledger.profiles import cycle_length_for, today_for
 from ..ledger.store import event_out
 from ..models import Event, User
 from ..schemas import EventIn, EventOut, SummaryOut, TimelineOut
@@ -47,7 +47,7 @@ def timeline(
     db: Session = Depends(get_db),
 ):
     _require_patient(pid, current_user, db)
-    today = settings.today_date
+    today = today_for(pid)
     rows = _rows(db, pid)
     starts = cyc.period_starts(rows)
     wanted = {cyc.canon_type(t.strip().lower()) for t in types.split(",") if t.strip()}
@@ -55,7 +55,8 @@ def timeline(
     if unknown:
         raise HTTPException(400, f"unknown type(s): {', '.join(sorted(unknown))}; use {', '.join(sorted(TYPES))}")
     lo = today.fromordinal(today.toordinal() - (days - 1))
-    events = [event_out(r, starts) for r in rows
+    n = cycle_length_for(pid)
+    events = [event_out(r, starts, n) for r in rows
               if lo <= r.date <= today and (not wanted or cyc.canon_type(r.type) in wanted)]
     return TimelineOut(events=events, cycle_starts=starts, today=today)
 
@@ -85,8 +86,9 @@ def create_event(
     t = cyc.canon_type((body.type or "").strip().lower())
     if t not in TYPES:
         raise HTTPException(400, f"unknown type {body.type!r}")
-    d = body.date or settings.today_date
-    if d > settings.today_date:
+    today = today_for(pid)
+    d = body.date or today
+    if d > today:
         raise HTTPException(400, "date cannot be in the future")
     if body.value is not None and not math.isfinite(body.value):
         raise HTTPException(400, "value must be a finite number")
@@ -109,7 +111,7 @@ def create_event(
     db.add(e)
     db.commit()
     db.refresh(e)
-    return event_out(e, cyc.period_starts(_rows(db, pid)))
+    return event_out(e, cyc.period_starts(_rows(db, pid)), cycle_length_for(pid))
 
 
 @router.post("/patients/{pid}/import")

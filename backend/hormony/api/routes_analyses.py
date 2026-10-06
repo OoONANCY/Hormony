@@ -281,6 +281,7 @@ async def get_analysis(
             k: r.get(k)
             for k in (
                 "facts",
+                "stats",
                 "hypotheses",
                 "agent_status",
                 "discordance",

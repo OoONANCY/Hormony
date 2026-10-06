@@ -191,7 +191,9 @@ def build_events() -> list[dict]:
 
 
 def seed_db(patient_id: str = PATIENT) -> int:
+    from .profiles import ensure_demo_profile
     init_db()
+    ensure_demo_profile(patient_id, patient_id.capitalize())
     db = SessionLocal()
     try:
         db.query(Event).filter(Event.patient_id == patient_id).delete()

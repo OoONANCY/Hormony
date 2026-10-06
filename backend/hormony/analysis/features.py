@@ -87,13 +87,16 @@ def _lab_comparison(samples: List[EventOut], starts: List[Date]) -> Optional[dic
             "direction": "flat" if stable else ("down" if b.value < a.value else "up")}
 
 
-def compute_stats(events: List[EventOut], starts: List[Date], today: Date, window_days: int = WINDOW_DAYS) -> dict:
+def compute_stats(events: List[EventOut], starts: List[Date], today: Date, window_days: int = WINDOW_DAYS,
+                  cycle_length: int = 28) -> dict:
     lo = today - timedelta(days=window_days - 1)
     ev = [e for e in events if lo <= e.date <= today]
     t = lambda e: cyc.canon_type(e.type)  # noqa: E731  (never mutate the caller's events)
     of = lambda kind: [e for e in ev if t(e) == kind]  # noqa: E731
     cd_of = lambda d: cyc.cycle_day(d, starts)  # noqa: E731
+    late = lambda cd: cyc.is_late(cd, cycle_length)  # noqa: E731
     stats: dict = {"window_days": window_days, "window_start": lo.isoformat(), "today": today.isoformat(),
+                   "cycle_length": cycle_length, "late_window": list(cyc.late_window(cycle_length)),
                    "counts": {k: len(of(k)) for k in ("cycle", "lab", "symptom", "sleep", "med")},
                    "focus": None, "med": None, "trend": None, "cooccur": [], "labs": None, "sleep": None}
 
@@ -105,10 +108,10 @@ def compute_stats(events: List[EventOut], starts: List[Date], today: Date, windo
     cycles = _cycles_in_window(starts, lo, today)
     start_ids = {e.date: e.id for e in events if t(e) == "cycle" and cyc.is_period_start(e.name, e.code)}
     if focus_name:
-        late = [e for e in fat if cyc.is_late(cd_of(e.date))]
-        with_late = sorted({_cycle_of(e.date, cycles) for e in late} - {None})
+        late_logs = [e for e in fat if late(cd_of(e.date))]
+        with_late = sorted({_cycle_of(e.date, cycles) for e in late_logs} - {None})
         stats["focus"] = {"name": focus_name, "n": len(fat), "ids": [e.id for e in fat],
-                          "late_n": len(late), "late_ids": [e.id for e in late],
+                          "late_n": len(late_logs), "late_ids": [e.id for e in late_logs],
                           "cycles_total": len(cycles), "cycles_with": len(with_late),
                           "cycle_start_ids": [start_ids[c] for c in with_late if c in start_ids]}
 
@@ -118,7 +121,7 @@ def compute_stats(events: List[EventOut], starts: List[Date], today: Date, windo
         m = meds[0]
         pre = [e for e in fat if e.date < m.date]
         post = [e for e in fat if e.date >= m.date]
-        off = [e for e in post if not cyc.is_late(cd_of(e.date))]
+        off = [e for e in post if not late(cd_of(e.date))]
         stats["med"] = {"id": m.id, "name": m.name, "short": m.name.split()[0], "date": m.date.isoformat(),
                         "label": label(m.date), "days_before": (m.date - lo).days, "days_after": (today - m.date).days + 1,
                         "pre": len(pre), "post": len(post), "pre_ids": [e.id for e in pre],
@@ -162,7 +165,7 @@ def compute_stats(events: List[EventOut], starts: List[Date], today: Date, windo
         if e.value is not None:
             nights[e.date] = e
     if nights:
-        late_n = lambda d: cyc.is_late(cd_of(d + timedelta(days=1)))  # noqa: E731
+        late_n = lambda d: late(cd_of(d + timedelta(days=1)))  # noqa: E731
         s = {"late_avg": _avg([e.value for d, e in nights.items() if late_n(d)]),
              "other_avg": _avg([e.value for d, e in nights.items() if not late_n(d)]),
              "late_ids": [e.id for d, e in nights.items() if late_n(d)], "n": len(nights)}
@@ -180,8 +183,10 @@ def compute_stats(events: List[EventOut], starts: List[Date], today: Date, windo
     return stats
 
 
-def analyze(events: List[EventOut], starts: List[Date], today: Date) -> Tuple[Dict[str, List[Fact]], dict]:
-    st = compute_stats(events, starts, today)
+def analyze(events: List[EventOut], starts: List[Date], today: Date,
+            cycle_length: int = 28) -> Tuple[Dict[str, List[Fact]], dict]:
+    st = compute_stats(events, starts, today, cycle_length=cycle_length)
+    days = "cycle days {}–{}".format(*st["late_window"])
     focus, med, labs, sl = st["focus"], st["med"], st["labs"], st["sleep"]
     f_low = lname(focus["name"]) if focus else ""
     lab: List[Fact] = []
@@ -208,7 +213,7 @@ def analyze(events: List[EventOut], starts: List[Date], today: Date) -> Tuple[Di
                               f"started on {med['label']} → {med['post']} in the {med['days_after']} days after",
                 [med["id"]] + med["pre_ids"][:1] + med["post_ids"][:2])
             if med["off_ids"]:
-                add(sym, "F-SYM", f"{len(med['off_ids'])} post-change {f_low} logs fall outside cycle days 20–28", med["off_ids"])
+                add(sym, "F-SYM", f"{len(med['off_ids'])} post-change {f_low} logs fall outside {days}", med["off_ids"])
         elif st["trend"]:
             tr = st["trend"]
             add(sym, "F-SYM", f"{focus['name']}: {tr['first']} logs in the first {tr['first_days']} days → "
@@ -216,14 +221,14 @@ def analyze(events: List[EventOut], starts: List[Date], today: Date) -> Tuple[Di
         for c in st["cooccur"]:
             add(sym, "F-SYM", f"{c['name']} appeared within a day of {f_low} in {c['co']} of {c['n']} logs", c["ids"])
 
-        add(cy, "F-CYC", f"{focus['late_n']} of {focus['n']} {f_low} logs fall on cycle days 20–28", focus["late_ids"])
+        add(cy, "F-CYC", f"{focus['late_n']} of {focus['n']} {f_low} logs fall on {days}", focus["late_ids"])
         if focus["cycles_total"]:
             add(cy, "F-CYC", f"The pattern repeats in {focus['cycles_with']} of {focus['cycles_total']} cycles",
                 focus["cycle_start_ids"])
     if sl and sl["late_avg"] is not None and sl["other_avg"] is not None:
         add(cy, "F-CYC", f"Late-luteal nights average {sl['late_avg']:.1f} h vs {sl['other_avg']:.1f} h on other nights")
     if sl and med and sl.get("before_avg") is not None and sl.get("after_avg") is not None:
-        add(shared, "F-SHARED", f"On comparable nights (outside cycle days 20–28), sleep averaged {sl['before_avg']:.1f} h "
+        add(shared, "F-SHARED", f"On comparable nights (outside {days}), sleep averaged {sl['before_avg']:.1f} h "
                                 f"before {med['label']} → {sl['after_avg']:.1f} h after")
     if sl and focus and "short_before" in sl:
         add(shared, "F-SHARED", f"{sl['short_before']} of {focus['n']} {f_low} days followed a night under "

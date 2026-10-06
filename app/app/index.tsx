@@ -1,8 +1,8 @@
 // The whole UI is the design prototype itself (web/hormony-app.html) running in a WebView, so the app
 // looks exactly like the prototype. This shell only supplies the backend URL and native capabilities
-// (haptics, clipboard, share sheet, Android back button) through a small message bridge.
+// (haptics, clipboard, share sheet, opening an uploaded report, Android back button) through a small message bridge.
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
-import { BackHandler, Platform, Share, View } from 'react-native';
+import { BackHandler, Linking, Platform, Share, View } from 'react-native';
 import { WebView, type WebViewMessageEvent } from 'react-native-webview';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
@@ -11,14 +11,16 @@ import { HORMONY_HTML } from '../src/web/hormonyHtml';
 
 // Empty API URL = the page runs on its built-in demo data, exactly like the standalone prototype.
 const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/+$/, '');
-const PATIENT_ID = process.env.EXPO_PUBLIC_PATIENT_ID ?? 'nancy';
+// Empty = the page asks who you are (start your own record or explore the demo) and remembers it on this device.
+const PATIENT_ID = process.env.EXPO_PUBLIC_PATIENT_ID ?? '';
 const BG = '#F6F2EC';
 
 type BridgeMessage =
   | { type: 'haptic'; p?: number | number[] }
   | { type: 'copy'; text?: string }
   | { type: 'share'; text?: string }
-  | { type: 'back'; handled?: boolean };
+  | { type: 'back'; handled?: boolean }
+  | { type: 'open'; url?: string };
 
 let lastHaptic = 0;
 function haptic(p: number | number[] | undefined) {
@@ -64,6 +66,12 @@ export default function HormonyScreen() {
       case 'back':
         if (!msg.handled) BackHandler.exitApp();
         break;
+      case 'open': {
+        // Only files served by our own backend (an uploaded lab report), never arbitrary links from page content.
+        const url = String(msg.url ?? '');
+        if (API_URL && url.startsWith(API_URL + '/')) Linking.openURL(url).catch(() => {});
+        break;
+      }
     }
   }, []);
 

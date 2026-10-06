@@ -19,6 +19,10 @@ venv/
 build/
 dist/
 
+# ---------- uploaded lab reports (personal health data) ----------
+backend/uploads/
+uploads/
+
 # ---------- databases & backups ----------
 *.db
 *.db.bak*

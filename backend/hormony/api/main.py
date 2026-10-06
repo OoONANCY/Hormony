@@ -5,12 +5,14 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from ..agents.llm import LLMConfigError, provider_name
+from ..agents.llm import LLMConfigError, provider_name, resolve_vision_llm
 from ..config import settings
 from ..db import db_ok, init_db
 from .routes_analyses import router as analyses_router
 from .routes_events import router as events_router
 from .routes_auth import router as auth_router
+from .routes_profiles import router as profiles_router
+from .routes_reports import router as reports_router
 
 log = logging.getLogger("hormony.api")
 
@@ -57,6 +59,9 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(events_router)
     app.include_router(analyses_router)
+    app.include_router(profiles_router)
+    app.include_router(reports_router)
+
     @app.get("/health")
     def health():
         ok = db_ok()
@@ -64,7 +69,8 @@ def create_app() -> FastAPI:
             llm = provider_name(settings)
         except LLMConfigError as e:
             llm = f"misconfigured: {e}"
-        return {"ok": ok, "db": "ok" if ok else "unavailable", "llm": llm}
+        vision = resolve_vision_llm(settings)
+        return {"ok": ok, "db": "ok" if ok else "unavailable", "llm": llm, "vision": vision.name if vision else None}
 
     return app
 

@@ -7,6 +7,7 @@ import tempfile
 
 _TMP = tempfile.mkdtemp(prefix="hormony-tests-")
 os.environ["HORMONY_DATABASE_URL"] = f"sqlite:///{_TMP}/test.db"
+os.environ["HORMONY_UPLOADS_DIR"] = os.path.join(_TMP, "uploads")
 os.environ.pop("HORMONY_DEMO_REPLAY", None)
 
 if not os.environ.get("HORMONY_LIVE_TESTS"):
@@ -28,15 +29,15 @@ import pytest  # noqa: E402
 def seeded():
     """Fresh demo ledger for patient `nancy`."""
     from hormony.db import init_db, SessionLocal
-    from hormony.models import Event, AnalysisRun
+    from hormony.models import Event, AnalysisRun, Profile, ReportFile
     from hormony.ledger.seed import seed_db
 
     init_db()
 
     db = SessionLocal()
     try:
-        db.query(Event).delete()
-        db.query(AnalysisRun).delete()
+        for model in (Event, AnalysisRun, Profile, ReportFile):
+            db.query(model).delete()
         db.commit()
     finally:
         db.close()
