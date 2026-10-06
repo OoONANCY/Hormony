@@ -22,13 +22,13 @@ import pytest  # noqa: E402
 def seeded():
     """Fresh demo ledger for patient `nancy` (and an empty one for everybody else)."""
     from hormony.db import init_db, SessionLocal
-    from hormony.models import Event, AnalysisRun
+    from hormony.models import Event, AnalysisRun, Profile
     from hormony.ledger.seed import seed_db
     init_db()
     db = SessionLocal()
     try:
-        db.query(Event).delete()
-        db.query(AnalysisRun).delete()
+        for model in (Event, AnalysisRun, Profile):
+            db.query(model).delete()
         db.commit()
     finally:
         db.close()

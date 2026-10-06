@@ -3,7 +3,7 @@ from __future__ import annotations
 import re
 from datetime import date as Date, timedelta
 from statistics import median
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Tuple
 
 LEGACY_TYPES = {"cyc": "cycle", "sym": "symptom", "slp": "sleep"}
 _PERIOD_START = re.compile(r"\bperiod\s+(start|started|starts|began)\b", re.I)
@@ -28,20 +28,27 @@ def cycle_day(d: Date, starts: List[Date]) -> Optional[int]:
     return (d - max(prior)).days + 1 if prior else None
 
 
-def phase(cd: int) -> str:
+def late_window(cycle_length: int = 28) -> Tuple[int, int]:
+    """The late-luteal days: the last 9 days of the cycle (20–28 for a 28-day cycle)."""
+    return cycle_length - 8, cycle_length
+
+
+def phase(cd: int, cycle_length: int = 28) -> str:
+    ov = cycle_length - 14   # ovulation is ~14 days before the next period
     if cd <= 5:
         return "Period"
-    if cd <= 13:
+    if cd <= ov - 1:
         return "Follicular"
-    if cd <= 16:
+    if cd <= ov + 2:
         return "Ovulation"
-    if cd <= 19:
+    if cd <= ov + 5:
         return "Early luteal"
     return "Late luteal"
 
 
-def is_late(cd: Optional[int]) -> bool:
-    return cd is not None and 20 <= cd <= 28
+def is_late(cd: Optional[int], cycle_length: int = 28) -> bool:
+    lo, hi = late_window(cycle_length)
+    return cd is not None and lo <= cd <= hi
 
 
 def predict_next_start(starts: List[Date]) -> Date:

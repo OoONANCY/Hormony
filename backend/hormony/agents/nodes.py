@@ -4,6 +4,7 @@ import asyncio
 from typing import Dict, List, Optional
 
 from ..analysis.features import analyze
+from ..ledger.profiles import cycle_length_for
 from ..ledger.store import load_ledger
 from ..outputs.hypothesis_graph import build as build_graph_out
 from ..outputs.report import build as build_report, build_brief
@@ -30,7 +31,7 @@ def _rebuttals(state: dict) -> Dict[str, Optional[Rebuttal]]:
 
 async def scope(state: dict) -> dict:
     events, starts, today = load_ledger(state["patient_id"])
-    facts, stats = analyze(events, starts, today)
+    facts, stats = analyze(events, starts, today, cycle_length_for(state["patient_id"]))
     return {"facts": {k: [f.model_dump() for f in v] for k, v in facts.items()},
             "stats": stats, "ledger_ids": [e.id for e in events]}
 

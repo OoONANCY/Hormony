@@ -121,5 +121,5 @@ async def get_analysis(run_id: str):
         raise HTTPException(404, "unknown analysis")
     r = ar.result or {}
     return {"question": ar.question, "status": ar.status,
-            **{k: r.get(k) for k in ("facts", "hypotheses", "agent_status", "discordance", "debate",
+            **{k: r.get(k) for k in ("facts", "stats", "hypotheses", "agent_status", "discordance", "debate",
                                      "verdict", "report", "graph", "brief")}}

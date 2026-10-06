@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = Field("", validation_alias=AliasChoices("HORMONY_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY"))
     openrouter_api_key: str = Field("", validation_alias=AliasChoices("HORMONY_OPENROUTER_API_KEY", "OPENROUTER_API_KEY"))
     openrouter_model: str = "nvidia/nemotron-3-super-120b-a12b:free"
-    today: str = "2026-09-29"
+    today: str = "2026-09-29"             # the demo profile's frozen date; personal profiles use the real date
     demo_replay: bool = False
 
     @property

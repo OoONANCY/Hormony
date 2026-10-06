@@ -11,7 +11,8 @@ import { HORMONY_HTML } from '../src/web/hormonyHtml';
 
 // Empty API URL = the page runs on its built-in demo data, exactly like the standalone prototype.
 const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/+$/, '');
-const PATIENT_ID = process.env.EXPO_PUBLIC_PATIENT_ID ?? 'nancy';
+// Empty = the page asks who you are (start your own record or explore the demo) and remembers it on this device.
+const PATIENT_ID = process.env.EXPO_PUBLIC_PATIENT_ID ?? '';
 const BG = '#F6F2EC';
 
 type BridgeMessage =
