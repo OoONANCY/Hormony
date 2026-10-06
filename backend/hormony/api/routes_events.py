@@ -8,12 +8,13 @@ import math
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
+from ..auth import get_current_user, readable_profile, writable_profile
 from ..db import get_db
 from ..ledger import cycle as cyc
 from ..ledger.importer import import_rows
 from ..ledger.profiles import cycle_length_for, today_for
 from ..ledger.store import event_out
-from ..models import Event
+from ..models import Event, User
 from ..schemas import EventIn, EventOut, SummaryOut, TimelineOut
 
 router = APIRouter()
@@ -27,7 +28,14 @@ def _rows(db: Session, pid: str):
 
 
 @router.get("/patients/{pid}/timeline", response_model=TimelineOut)
-def timeline(pid: str, days: int = Query(91, ge=1, le=3660), types: str = "", db: Session = Depends(get_db)):
+def timeline(
+    pid: str,
+    days: int = Query(91, ge=1, le=3660),
+    types: str = "",
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    readable_profile(pid, user)
     today = today_for(pid)
     rows = _rows(db, pid)
     starts = cyc.period_starts(rows)
@@ -43,7 +51,12 @@ def timeline(pid: str, days: int = Query(91, ge=1, le=3660), types: str = "", db
 
 
 @router.get("/patients/{pid}/summary", response_model=SummaryOut)
-def summary(pid: str, db: Session = Depends(get_db)):
+def summary(
+    pid: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    readable_profile(pid, user)
     rows = _rows(db, pid)
     counts = {k: 0 for k in sorted(TYPES)}
     for r in rows:
@@ -52,7 +65,13 @@ def summary(pid: str, db: Session = Depends(get_db)):
 
 
 @router.post("/patients/{pid}/events", response_model=EventOut)
-def create_event(pid: str, body: EventIn, db: Session = Depends(get_db)):
+def create_event(
+    pid: str,
+    body: EventIn,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    writable_profile(pid, user)
     t = cyc.canon_type((body.type or "").strip().lower())
     if t not in TYPES:
         raise HTTPException(400, f"unknown type {body.type!r}")
@@ -85,7 +104,13 @@ def create_event(pid: str, body: EventIn, db: Session = Depends(get_db)):
 
 
 @router.post("/patients/{pid}/import")
-async def import_file(pid: str, file: UploadFile = File(...)):
+async def import_file(
+    pid: str,
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    writable_profile(pid, user)
     raw = await file.read()
     name = (file.filename or "").lower()
     try:

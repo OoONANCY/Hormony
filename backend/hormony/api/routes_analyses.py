@@ -6,15 +6,16 @@ import os
 import uuid
 from typing import List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from .. import runner
 from ..agents.llm import LLMConfigError, resolve_llm
+from ..auth import get_current_user, readable_profile
 from ..config import settings
 from ..db import SessionLocal
-from ..models import AnalysisRun
+from ..models import AnalysisRun, User
 
 router = APIRouter()
 AGENTS = ("lab", "symptom", "cycle")
@@ -31,10 +32,10 @@ def _active(v: Optional[List[str]]) -> List[str]:
     return list(AGENTS) if v is None else [a for a in v if a in AGENTS]
 
 
-def _save(run_id: str, body: AnalysisIn, status: str, result=None, event_log=None) -> None:
+def _save(run_id: str, body: AnalysisIn, user: User, status: str, result=None, event_log=None) -> None:
     db = SessionLocal()
     try:
-        db.add(AnalysisRun(id=run_id, patient_id=body.patient_id, question=body.question, status=status,
+        db.add(AnalysisRun(id=run_id, patient_id=body.patient_id, user_id=user.id, question=body.question, status=status,
                            result=result, event_log=event_log))
         db.commit()
     finally:
@@ -80,14 +81,33 @@ async def _replay(run_id: str, events: List[dict]) -> None:
         await runner._push(run_id, e)
 
 
+def _own_run(run_id: str, user: User) -> AnalysisRun:
+    """An analysis is visible to whoever ran it. Runs from before accounts follow their profile's owner."""
+    db = SessionLocal()
+    try:
+        ar = db.query(AnalysisRun).filter(AnalysisRun.id == run_id).first()
+    finally:
+        db.close()
+    if ar is not None and ar.user_id is None:
+        try:
+            readable_profile(ar.patient_id, user)
+            return ar
+        except HTTPException:
+            ar = None
+    if ar is None or ar.user_id != user.id:
+        raise HTTPException(404, "unknown analysis")
+    return ar
+
+
 @router.post("/analyses")
-async def create_analysis(body: AnalysisIn):
+async def create_analysis(body: AnalysisIn, user: User = Depends(get_current_user)):
+    readable_profile(body.patient_id, user)   # your own record, or the shared demo
     active = _active(body.active_agents)
     run_id = str(uuid.uuid4())
     if settings.demo_replay:
         with open(GOLDEN) as f:
             events, result = replay_for(json.load(f), active, run_id)
-        _save(run_id, body, "done", result, events)
+        _save(run_id, body, user, "done", result, events)
         entry = runner.register(run_id)
         entry["task"] = asyncio.create_task(_replay(run_id, events))
         return {"id": run_id}
@@ -95,14 +115,16 @@ async def create_analysis(body: AnalysisIn):
         llm = resolve_llm(settings)
     except LLMConfigError as e:
         raise HTTPException(503, f"LLM misconfigured: {e}")
-    _save(run_id, body, "running")
+    _save(run_id, body, user, "running")
     entry = runner.register(run_id)
     entry["task"] = asyncio.create_task(runner.run(run_id, body.patient_id, body.question, active, llm=llm))
     return {"id": run_id}
 
 
 @router.get("/analyses/{run_id}/stream")
-async def stream(run_id: str):
+async def stream(run_id: str, user: User = Depends(get_current_user)):
+    _own_run(run_id, user)
+
     async def gen():
         async for evt in runner.follow(run_id):
             yield f"data: {json.dumps(evt)}\n\n"
@@ -111,14 +133,8 @@ async def stream(run_id: str):
 
 
 @router.get("/analyses/{run_id}")
-async def get_analysis(run_id: str):
-    db = SessionLocal()
-    try:
-        ar = db.query(AnalysisRun).filter(AnalysisRun.id == run_id).first()
-    finally:
-        db.close()
-    if not ar:
-        raise HTTPException(404, "unknown analysis")
+async def get_analysis(run_id: str, user: User = Depends(get_current_user)):
+    ar = _own_run(run_id, user)
     r = ar.result or {}
     return {"question": ar.question, "status": ar.status,
             **{k: r.get(k) for k in ("facts", "stats", "hypotheses", "agent_status", "discordance", "debate",

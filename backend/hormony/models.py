@@ -1,9 +1,20 @@
 from __future__ import annotations
 from datetime import date as Date, datetime as DateTime
 from typing import Optional
+import uuid
 from sqlalchemy import String, Float, Integer, Date, DateTime, JSON, PrimaryKeyConstraint, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 from .db import Base
+
+
+
+class User(Base):
+    """An account. It owns profiles (Profile.owner_id); the shared demo profile has no owner."""
+    __tablename__ = "users"
+    id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
 
 
 class Event(Base):
@@ -30,6 +41,7 @@ class Profile(Base):
     name: Mapped[str] = mapped_column(String(60))
     kind: Mapped[str] = mapped_column(String(10), default="personal")   # demo | personal
     cycle_length: Mapped[int] = mapped_column(Integer, default=28)
+    owner_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, default=None, index=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
 
 
@@ -51,6 +63,7 @@ class AnalysisRun(Base):
     __tablename__ = "analysis_runs"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)
     patient_id: Mapped[str] = mapped_column(String(40))
+    user_id: Mapped[Optional[str]] = mapped_column(String(36), nullable=True, default=None, index=True)  # who ran it
     question: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(12), default="running")
     result: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=None)

@@ -47,15 +47,19 @@ def ensure_demo_profile(pid: str = "nancy", name: str = "Nancy") -> None:
         db.close()
 
 
-def list_profiles() -> List[Profile]:
+def list_profiles(owner_id: Optional[str] = None) -> List[Profile]:
+    """The demo plus the profiles `owner_id` owns (every profile when no owner is given, e.g. from the CLI)."""
     db = SessionLocal()
     try:
-        return db.query(Profile).order_by(Profile.kind.asc(), Profile.created_at.asc()).all()
+        q = db.query(Profile)
+        if owner_id is not None:
+            q = q.filter((Profile.kind == "demo") | (Profile.owner_id == owner_id))
+        return q.order_by(Profile.kind.asc(), Profile.created_at.asc()).all()
     finally:
         db.close()
 
 
-def create_profile(name: str, last_period_start: Date, cycle_length: int) -> Profile:
+def create_profile(name: str, last_period_start: Date, cycle_length: int, owner_id: Optional[str] = None) -> Profile:
     today = real_today()
     if last_period_start > today:
         raise ValueError("last period start can't be in the future")
@@ -67,7 +71,7 @@ def create_profile(name: str, last_period_start: Date, cycle_length: int) -> Pro
         pid = f"{slug}-{secrets.token_hex(2)}"
         while db.query(Profile).filter(Profile.id == pid).first():
             pid = f"{slug}-{secrets.token_hex(2)}"
-        profile = Profile(id=pid, name=name.strip(), kind="personal", cycle_length=cycle_length)
+        profile = Profile(id=pid, name=name.strip(), kind="personal", cycle_length=cycle_length, owner_id=owner_id)
         db.add(profile)
         d = last_period_start
         db.add(Event(id=f"CYC-{d.month:02d}{d.day:02d}", patient_id=pid, date=d, type="cycle", name="Period started",

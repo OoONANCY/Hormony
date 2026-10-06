@@ -7,15 +7,18 @@ import os
 from datetime import date as Date
 from typing import List, Optional
 
-from fastapi import APIRouter, File, HTTPException, UploadFile
+import jwt
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from ..agents.llm import AgentUnavailable, LLMConfigError, resolve_llm, resolve_vision_llm
+from ..auth import (FILE_LINK_MINUTES, create_file_token, decode, get_current_user, readable_profile, user_by_id,
+                    writable_profile)
 from ..config import settings
 from ..db import SessionLocal
 from ..ledger.profiles import today_for
-from ..models import Event, ReportFile
+from ..models import Event, ReportFile, User
 from ..reports.extract import NeedsVision, ReportExtraction, UnsupportedFile, kind_of, read_report, review_rows
 
 router = APIRouter()
@@ -40,7 +43,8 @@ def _preview(rf: ReportFile, today: Date, duplicate: bool) -> dict:
 
 
 @router.post("/patients/{pid}/reports")
-async def upload_report(pid: str, file: UploadFile = File(...)):
+async def upload_report(pid: str, file: UploadFile = File(...), user: User = Depends(get_current_user)):
+    writable_profile(pid, user)
     data = await file.read()
     if len(data) > MAX_BYTES:
         raise HTTPException(413, "file is larger than 15 MB")
@@ -101,7 +105,8 @@ class ConfirmIn(BaseModel):
 
 
 @router.post("/patients/{pid}/reports/{report_id}/confirm")
-def confirm_report(pid: str, report_id: str, body: ConfirmIn):
+def confirm_report(pid: str, report_id: str, body: ConfirmIn, user: User = Depends(get_current_user)):
+    writable_profile(pid, user)
     today = today_for(pid)
     db = SessionLocal()
     try:
@@ -147,8 +152,7 @@ def confirm_report(pid: str, report_id: str, body: ConfirmIn):
         db.close()
 
 
-@router.get("/patients/{pid}/reports/{report_id}/file")
-def report_file(pid: str, report_id: str):
+def _stored(pid: str, report_id: str):
     db = SessionLocal()
     try:
         rf = db.query(ReportFile).filter(ReportFile.id == report_id, ReportFile.patient_id == pid).first()
@@ -157,4 +161,35 @@ def report_file(pid: str, report_id: str):
     path = os.path.join(settings.uploads_dir, rf.path) if rf else ""
     if rf is None or not os.path.exists(path):
         raise HTTPException(404, "unknown report")
+    return rf, path
+
+
+@router.get("/patients/{pid}/reports/{report_id}/file")
+def report_file(pid: str, report_id: str, user: User = Depends(get_current_user)):
+    readable_profile(pid, user)
+    rf, path = _stored(pid, report_id)
     return FileResponse(path, media_type=rf.content_type, filename=rf.filename)
+
+
+@router.post("/patients/{pid}/reports/{report_id}/link")
+def report_link(pid: str, report_id: str, user: User = Depends(get_current_user)):
+    """A link that opens the original file for a few minutes without the sign-in header (phone browsers can't add it)."""
+    readable_profile(pid, user)
+    _stored(pid, report_id)
+    return {"url": f"/reports/files/{create_file_token(user.id, pid, report_id)}", "expires_in": FILE_LINK_MINUTES * 60}
+
+
+@router.get("/reports/files/{token}")
+def report_file_by_link(token: str):
+    try:
+        claims = decode(token, "file")
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(401, "This link has expired. Open the report again from the app.")
+    except jwt.PyJWTError:
+        raise HTTPException(404, "unknown report")
+    user = user_by_id(claims["sub"])
+    if user is None:
+        raise HTTPException(404, "unknown report")
+    readable_profile(claims["pid"], user)              # still theirs (not deleted or handed over since)
+    rf, path = _stored(claims["pid"], claims["rid"])
+    return FileResponse(path, media_type=rf.content_type, filename=rf.filename, content_disposition_type="inline")
