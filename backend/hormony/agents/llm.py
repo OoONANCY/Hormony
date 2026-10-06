@@ -12,6 +12,7 @@ is never silently replaced by the demo engine.
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import os
 import re
@@ -59,6 +60,14 @@ def provider_name(cfg: Settings) -> str:
     if choice == "anthropic":
         return f"anthropic:{cfg.model}"
     raise LLMConfigError(f"Unknown HORMONY_LLM={cfg.llm!r}; use demo, anthropic or openrouter")
+
+
+def resolve_vision_llm(cfg: Optional[Settings] = None) -> Optional["OpenRouterLLM"]:
+    """The model that reads photos and scanned reports, or None when it isn't configured."""
+    cfg = cfg or default_settings
+    if not cfg.openrouter_api_key or not cfg.vision_model:
+        return None
+    return OpenRouterLLM(api_key=cfg.openrouter_api_key, model=cfg.vision_model)
 
 
 def resolve_llm(cfg: Optional[Settings] = None) -> "LLM":
@@ -178,10 +187,20 @@ class OpenRouterLLM:
             "Authorization": f"Bearer {api_key}", "X-Title": "Hormony", "HTTP-Referer": "https://hormony.app"})
 
     async def structured(self, system, user, schema, effort="medium"):
+        return await self._structured(system, user, schema, effort)
+
+    async def structured_vision(self, system, text, images, schema, effort="medium"):
+        """Same as `structured`, with images as (mime, bytes) sent alongside the text."""
+        parts = [{"type": "text", "text": text}] + [
+            {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{base64.b64encode(data).decode()}"}}
+            for mime, data in images]
+        return await self._structured(system, parts, schema, effort)
+
+    async def _structured(self, system, user_content, schema, effort):
         js = strict_schema(schema)
         messages = [{"role": "system", "content": f"{system}\n\nRespond with ONLY one JSON object (no prose, no markdown) "
                                                   f"that matches this JSON Schema:\n{json.dumps(js)}"},
-                    {"role": "user", "content": user}]
+                    {"role": "user", "content": user_content}]
         answer = await self._complete(messages, schema, js, effort)
         try:
             return schema.model_validate(extract_json(answer))
