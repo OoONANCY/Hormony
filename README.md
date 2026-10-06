@@ -104,7 +104,7 @@ EXPO_PUBLIC_API_URL=http://192.168.1.20:8000 yarn start --lan
 
 Scan the QR code in the terminal with your phone (iPhone Camera or Expo Go's scanner), or enter `exp://<your-ip>:8081` in Expo Go. The phone must be on the same Wi-Fi as the laptop.
 
-On first launch the app asks whether to **start your own record** or **explore the demo**. It remembers the choice on that phone. To skip the question, set `EXPO_PUBLIC_PATIENT_ID=nancy`, or another profile id.
+On first launch the app asks you to **create an account** (or sign in), then whether to **start your own record** or **explore the demo**. It remembers both on that phone; sign out from Me. Sessions last 24 hours, after which it asks for your password again and reopens where you were.
 
 - If the phone can't connect, try `yarn start --tunnel` (the API URL must still be reachable from the phone).
 - Without `EXPO_PUBLIC_API_URL`, the app runs on its built-in demo data.
@@ -187,6 +187,8 @@ cd app && yarn test                                  # bundles the UI + TypeScri
 
 | Problem | Fix |
 |---|---|
+| "Your session has expired" | Sign in again; sessions last 24 hours. Your records are untouched |
+| A check-in in the demo disappears after switching profiles | Expected: the demo is shared and read-only on the server, so what you log there stays on the phone until you leave it |
 | "Can't reach Hormony" on launch | Same cause as below. Your own record is never replaced by demo data; tap **Try again** once the backend is up |
 | App says "Offline · showing demo data" | The phone can't reach the API. Check that both are on the same Wi-Fi, that `EXPO_PUBLIC_API_URL` uses the laptop's IP (not `localhost`), and that the macOS firewall allows incoming connections for Python and Node |
 | "Project is incompatible with this version of Expo Go" | Update Expo Go (the project uses SDK 57) |

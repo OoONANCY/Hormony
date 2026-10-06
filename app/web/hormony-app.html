@@ -871,8 +871,11 @@ const lvlPct=()=>{const l=lvl();return l.next?(S.xp-l.from)/(l.to-l.from):1};
    reads/writes the real evidence ledger and streams real analyses. Without either it stays the
    self-contained prototype on mock data. Markup and styles are untouched in both modes. */
 const HCFG=window.HORMONY_CONFIG||{};
-const SAVED_PROFILE=(()=>{try{return JSON.parse(store.get('hormony.profile')||'null')}catch(e){return null}})();
-let PID=(SAVED_PROFILE&&SAVED_PROFILE.id)||HCFG.patientId||'';   // which profile this device last used
+let AUTH=(()=>{try{return JSON.parse(store.get('hormony.auth')||'null')}catch(e){return null}})();   // {token,email,user_id}
+const setAuth=a=>{AUTH=a;store.set('hormony.auth',a?JSON.stringify(a):null)};
+const profKey=()=>'hormony.profile'+(AUTH&&AUTH.user_id?'.'+AUTH.user_id:'');   // the profile this account last used here
+const savedProfile=()=>{try{return JSON.parse(store.get(profKey())||'null')}catch(e){return null}};
+let PID=HCFG.patientId||'';
 const isPersonal=()=>!!(S.profile&&S.profile.kind==='personal');
 const NAME=()=>S.profile?S.profile.name:'Nancy';
 const initialOf=n=>(String(n||'').trim()[0]||'·').toUpperCase();
@@ -880,11 +883,15 @@ const API={
   base:String(HCFG.apiUrl||new URLSearchParams(location.search).get('api')||'').replace(/\/+$/,''),
   get on(){return !!this.base&&S.source==='live'},
   url(p){return this.base+p},
+  auth(){return AUTH&&AUTH.token?{Authorization:'Bearer '+AUTH.token}:{}},
   async req(p,opt={},ms=0){
     const ctl=ms&&typeof AbortController!=='undefined'?new AbortController():null,t=ctl&&setTimeout(()=>ctl.abort(),ms);
-    let r;try{r=await fetch(this.url(p),ctl?Object.assign({},opt,{signal:ctl.signal}):opt)}finally{if(t)clearTimeout(t)}
+    const o=Object.assign({},opt,{headers:Object.assign({},opt.headers||{},this.auth())});if(ctl)o.signal=ctl.signal;
+    let r;try{r=await fetch(this.url(p),o)}finally{if(t)clearTimeout(t)}
     if(!r.ok){const txt=await r.text();let det=txt;try{const j=JSON.parse(txt);det=typeof j.detail==='string'?j.detail:j.detail?JSON.stringify(j.detail):txt}catch(_){}
-      const e=new Error(r.status+' '+String(det).slice(0,200));e.status=r.status;e.detail=String(det);throw e}
+      const e=new Error(r.status+' '+String(det).slice(0,200));e.status=r.status;e.detail=String(det);
+      if(r.status===401&&AUTH&&!/^\/auth\/(login|register)/.test(p))authLost();
+      throw e}
     return r.status===204?null:r.json()},
   get(p,ms){return this.req(p,{},ms)},
   post(p,b){return this.req(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})},
@@ -935,25 +942,36 @@ let SPLASH_T0=Date.now();
 function hideSplash(){const sp=$('#splash');setTimeout(()=>{sp.classList.add('off');sp.onclick=()=>sp.classList.add('off')},Math.max(0,(RM?150:1500)-(Date.now()-SPLASH_T0)))}
 async function bootLive(){
   if(!API.base)return;
-  let health,profs;
-  try{[health,profs]=await Promise.all([API.get('/health',10000),API.get('/profiles',10000)])}
-  catch(err){hideSplash();return bootOffline()}
-  S.health=health;S.profiles=profs;
-  const p=profs.find(x=>x.id===PID);
-  if(!p){hideSplash();return showWelcome('intro')}
-  try{await switchProfile(p)}catch(err){hideSplash();return bootOffline()}
-  hideWelcome();hideSplash();
+  try{S.health=await API.get('/health',10000)}catch(err){hideSplash();return bootOffline()}
+  if(!AUTH){hideSplash();return showWelcome('signin')}
+  try{await API.get('/auth/me',10000);await afterSignIn()}
+  catch(err){hideSplash();return err.status===401?null:bootOffline()}   // 401: authLost() already asked to sign in again
+  hideSplash();
+}
+async function afterSignIn(){   // this account's profiles, and the one it used last on this device
+  S.profiles=await API.get('/profiles',10000);
+  const saved=savedProfile(),p=S.profiles.find(x=>x.id===((saved&&saved.id)||HCFG.patientId));
+  if(!p)return showWelcome('intro');
+  await switchProfile(p);hideWelcome();
 }
 function bootOffline(){
   S.source='offline';
-  if(SAVED_PROFILE&&SAVED_PROFILE.kind==='personal')return showWelcome('offline');   // never show demo data as if it were theirs
+  const saved=AUTH&&savedProfile();
+  if(saved&&saved.kind==='personal')return showWelcome('offline');   // never show demo data as if it were theirs
   setTimeout(()=>toast('Offline · showing demo data','help'),1700);
 }
+function authLost(){   // the session expired or the account is gone: ask to sign in again
+  if(!AUTH)return;
+  W.mode='signin';W.email=AUTH.email;W.note='Your session has expired. Sign in again to continue.';
+  setAuth(null);showWelcome('signin');
+}
+const canWrite=()=>API.on&&isPersonal();   // the demo is read-only on the server: what you log there stays on this phone
+function demoNote(){if(API.on&&!isPersonal()&&!S.demoNoted){S.demoNoted=true;setTimeout(()=>toast('Demo · changes stay on this phone','help'),2300)}}
 async function switchProfile(p){
   const prev=[PID,CYCLE_N];PID=p.id;CYCLE_N=p.cycle_length||28;
   try{await loadLedger()}catch(err){[PID,CYCLE_N]=prev;throw err}
   S.profile=p;S.source='live';
-  store.set('hormony.profile',JSON.stringify({id:p.id,kind:p.kind,name:p.name}));
+  store.set(profKey(),JSON.stringify({id:p.id,kind:p.kind,name:p.name}));
   Object.assign(S,p.kind==='personal'?personalGame(p.id,isoOf(TODAY),isoOf(TODAY-1)):Object.assign(DEMO_GAME(),{saved:null}));
   S.analysis=null;S.liveRun=null;S.qsFor=null;S.fresh=null;S.report=null;S.hover=null;S.feedN=12;S.sel=p.kind==='personal'?TODAY:87;G=null;
   if(S.lastAnalysis){try{S.analysis=Object.assign({id:S.lastAnalysis},await API.get(`/analyses/${encodeURIComponent(S.lastAnalysis)}`))}
@@ -972,7 +990,7 @@ async function refreshProfiles(){
   try{S.profiles=await API.get('/profiles');const p=S.profiles.find(x=>x.id===PID);if(p)S.profile=p;const c=$('#profCard');if(c&&S.current==='me')c.outerHTML=profilesCard()}catch(e){}
 }
 function pickImport(){
-  if(!API.on)return toast('Connect the backend to import files','upload');
+  if(!canWrite())return toast(API.on?'The demo is read-only · import into your own record':'Connect the backend to import files','upload');
   const inp=document.createElement('input');inp.type='file';inp.accept='.csv,.json,text/csv,application/json';
   inp.onchange=async()=>{const f=inp.files&&inp.files[0];if(!f)return;const fd=new FormData();fd.append('file',f,f.name);
     try{const j=await API.req(`/patients/${encodeURIComponent(PID)}/import`,{method:'POST',body:fd});
@@ -1188,7 +1206,8 @@ function saveCheckin(btn){
   toast(first?`Check-in saved · ${S.streak}-day streak`:'Check-in updated');
   setTimeout(()=>bumpEvidence('energy'),500);setTimeout(()=>bumpEvidence('sleep'),1100);
   if(!S.unlocked&&S.current==='today')setTimeout(()=>$('#unlockCard').scrollIntoView({behavior:'smooth',block:'center'}),250);
-  if(API.on){const sv=S.saved=S.saved||{sleep:null,tags:new Set()};(async()=>{     // edits only send what changed
+  demoNote();
+  if(canWrite()){const sv=S.saved=S.saved||{sleep:null,tags:new Set()};(async()=>{     // edits only send what changed
     if(sv.sleep!==S.sleepH){await persist({type:'sleep',name:'Sleep',value:S.sleepH,unit:'h',date:isoOf(TODAY-1),source:'Daily check-in'});sv.sleep=S.sleepH}
     for(const t of tags){if(sv.tags.has(t))continue;const sev=t==='Fatigue'&&S.energy===0?8:6;await persist({type:'symptom',name:t,severity:sev,code:SYMCODE[t]||null,date:isoOf(TODAY),source:'Daily check-in'});sv.tags.add(t)}
     saveGame();syncLedger()})()}
@@ -1325,10 +1344,13 @@ function openEvent(id){
   ${rep&&API.on?`<button class="btn ghost block mt16" onclick="openReport('${rep[1]}',${+rep[2]||1})">${ic('doc')}Open the original report${rep[2]?` · page ${+rep[2]}`:''}</button>`:''}
   <button class="btn ghost block mt16" onclick="closeSheet()">Done</button>`);
 }
-function openReport(id,page){
-  const url=API.url(`/patients/${encodeURIComponent(PID)}/reports/${encodeURIComponent(id)}/file`)+(page>1?`#page=${page}`:'');
-  if(window.ReactNativeWebView)return bridge('open',{url});
-  window.open(url,'_blank','noopener');
+async function openReport(id,page){
+  const win=window.ReactNativeWebView?null:window.open('','_blank');   // open now: browsers block windows opened after a wait
+  try{const j=await API.post(`/patients/${encodeURIComponent(PID)}/reports/${encodeURIComponent(id)}/link`,{});
+    const url=API.url(j.url)+(page>1?`#page=${page}`:'');
+    if(window.ReactNativeWebView)return bridge('open',{url});
+    if(win)win.location.href=url;else window.open(url,'_blank','noopener')}
+  catch(e){if(win)win.close();toast(errMsg(e),'help')}
 }
 
 /* ---------- logging ---------- */
@@ -1337,7 +1359,7 @@ const sevFace=s=>s<=2?'🙂':s<=4?'😕':s<=6?'😣':s<=8?'😫':'🥵';
 let uidN=0;
 function openLog(){
   openSheet(`<div class="eyebrow">Add to your story</div><div class="h2" style="margin-top:4px">What do you want to <em>log?</em></div><p class="small" style="margin-top:6px">Every record becomes dated evidence the agents can reason over.</p>
-  <div class="tiles">${[['sym','Symptom','severity'],['slp','Sleep','hours'],['cyc','Period','flow'],['lab','Lab value','value + unit'],['med','Medication','change'],['scan',API.on?'Lab report':'Scan report',API.on?'PDF or photo':'auto-extract']].map(([k,n,s])=>{const sc=k==='scan';return`<button class="tile" onclick="logForm('${k}')"><span class="bub${sc?' iri':''}" style="${sc?'':'background:'+T[k].hex}">${ic(sc?'scan':T[k].icon)}</span>${n}<small>${s}</small></button>`}).join('')}</div>`);
+  <div class="tiles">${[['sym','Symptom','severity'],['slp','Sleep','hours'],['cyc','Period','flow'],['lab','Lab value','value + unit'],['med','Medication','change'],['scan',canWrite()?'Lab report':'Scan report',canWrite()?'PDF or photo':'auto-extract']].map(([k,n,s])=>{const sc=k==='scan';return`<button class="tile" onclick="logForm('${k}')"><span class="bub${sc?' iri':''}" style="${sc?'':'background:'+T[k].hex}">${ic(sc?'scan':T[k].icon)}</span>${n}<small>${s}</small></button>`}).join('')}</div>`);
 }
 function logForm(k){
   const head=(title,sub)=>`<div class="row" style="gap:12px"><button class="backBtn" onclick="swapSheetLog()" aria-label="Back">${ic('back')}</button><div><div class="eyebrow">${sub}</div><div class="h2">${title}</div></div></div>`;
@@ -1349,7 +1371,7 @@ function logForm(k){
   if(k==='cyc'){S.lf={name:'Spotting'};swapSheet(head('Any bleeding today?','Cycle')+`<div class="chips mt16">${['Spotting','Light flow','Medium flow','Heavy flow'].map((t,i)=>`<button class="chip ${i?'':'sel'}" onclick="lfSel(this,'${t}')">${t}</button>`).join('')}</div><p class="small mt12">Hormony uses this to refine your cycle-phase estimate.</p><button class="btn primary block mt16" onclick="saveLog('cyc',this)">Add to timeline · +10 XP</button>`)}
   if(k==='lab'){S.lf={i:0};swapSheet(head('Add a lab value','Lab result')+`<div class="chips mt16">${ANALYTES.map((a,i)=>`<button class="chip ${i?'':'sel'}" onclick="lfAn(this,${i})">${a[0]}</button>`).join('')}</div><div class="field"><label id="lfUnit">Value · ${ANALYTES[0][2]}</label><input class="inp" id="lfVal" type="number" inputmode="decimal" step="any" placeholder="e.g. ${ANALYTES[0][3]}"></div><button class="btn primary block mt16" onclick="saveLog('lab',this)">Add to timeline · +25 XP</button>`)}
   if(k==='med'){S.lf={chg:'Started'};swapSheet(head('Medication change','Medication')+`<div class="field"><label>Medication</label><input class="inp" id="lfMed" placeholder="e.g. Vitamin D 1000 IU" maxlength="60"></div><div class="chips mt12">${['Started','Stopped','Dose change','Timing change'].map((t,i)=>`<button class="chip ${i?'':'sel'}" onclick="lfSel(this,'${t}','chg')">${t}</button>`).join('')}</div><button class="btn primary block mt16" onclick="saveLog('med',this)">Add to timeline · +10 XP</button>`)}
-  if(k==='scan')API.on?uploadFlow():scanFlow();
+  if(k==='scan')canWrite()?uploadFlow():scanFlow();
 }
 function swapSheetLog(){S.scanRun++;const b=$('#sheet .sheetBody');if(b)b.remove();openLog()}
 function lfPick(b,t){$$('#lfChips .chip').forEach(c=>c.classList.remove('on'));b.classList.add('on');S.lf.name=t;buzz(4)}
@@ -1366,7 +1388,8 @@ function saveLog(k,btn){
     gain=25;e={type:'lab',name:a[0],code:a[1],v,u:a[2],val:v+' '+a[2]};earn('lab')}
   if(k==='med'){const n=$('#lfMed').value.trim();if(!n){toast('Add the medication name','help');$('#lfMed').focus();return}e={type:'med',name:n,val:S.lf.chg}}
   if(e){e.id=`USR-${md(TODAY)}-${++uidN}`;if(e.d===undefined)e.d=TODAY;e.src='Manual entry';e.note=e.note||'';addE(e)}
-  if(API.on){const body=k==='sym'?{type:'symptom',name:S.lf.name,severity:S.lf.sev,code:SYMCODE[S.lf.name]||null}
+  demoNote();
+  if(canWrite()){const body=k==='sym'?{type:'symptom',name:S.lf.name,severity:S.lf.sev,code:SYMCODE[S.lf.name]||null}
     :k==='slp'?{type:'sleep',name:'Sleep',value:S.lf.h,unit:'h',date:isoOf(TODAY-1)}
     :k==='cyc'?{type:'cycle',name:S.lf.name}
     :k==='lab'?{type:'lab',name:e.name,code:e.code,value:e.v,unit:e.u}
@@ -1395,7 +1418,8 @@ async function scanFlow(){
 function saveScan(){
   if(E.some(e=>e.d===TODAY&&e.type==='lab'&&e.src==='Scanned lab report'))return toast('This report is already in your timeline','help');
   S.scanVals.forEach(([name,code,v,u])=>addE({id:`LAB-${md(TODAY)}-${code}`,d:TODAY,type:'lab',name,code,v,u,val:v+' '+u,src:'Scanned lab report',note:''}));
-  if(API.on)Promise.all(S.scanVals.map(([name,code,v,u])=>persist({type:'lab',name,code,value:v,unit:u,date:isoOf(TODAY),source:'Scanned lab report'}))).then(syncLedger);
+  demoNote();
+  if(canWrite())Promise.all(S.scanVals.map(([name,code,v,u])=>persist({type:'lab',name,code,value:v,unit:u,date:isoOf(TODAY),source:'Scanned lab report'}))).then(syncLedger);
   closeSheet();xp(40);confetti(90,.5,.5);toast('3 lab values added');earn('scan');afterData();
 }
 /* ---------- real lab reports: pick → read → review → confirm (live mode) ---------- */
@@ -1563,6 +1587,22 @@ async function runAgent(a,delay,alive,w,follow){
   await w(350);
 }
 function startDebate(q){return API.on?startDebateLive(q):startDebateDemo(q)}
+function sseOpen(path,h){   // Server-Sent Events over fetch: EventSource can't send the Authorization header
+  let closed=false,ctl=null;
+  (async()=>{for(let tries=0;!closed&&!h.stop();tries++){
+    try{ctl=typeof AbortController!=='undefined'?new AbortController():null;
+      const r=await fetch(API.url(path),{headers:Object.assign({Accept:'text/event-stream'},API.auth()),signal:ctl?ctl.signal:undefined});
+      if(r.status===401)return authLost();
+      if(!r.ok||!r.body)throw new Error('stream '+r.status);
+      h.open();tries=0;
+      const rd=r.body.getReader(),dec=new TextDecoder();let buf='';
+      for(;;){const{value,done}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true}).replace(/\r\n/g,'\n');
+        let i;while((i=buf.indexOf('\n\n'))>=0){const blk=buf.slice(0,i);buf=buf.slice(i+2);
+          const data=blk.split('\n').filter(l=>l.startsWith('data:')).map(l=>l.slice(5).replace(/^ /,'')).join('\n');if(data)h.message(data)}}
+    }catch(e){if(closed)return}
+    if(closed||h.stop())return;await sleep(Math.min(5000,600*(tries+1)))}})();   // dropped: reconnect (the server replays from the start)
+  return{close(){closed=true;try{ctl&&ctl.abort()}catch(_){}}};
+}
 function engineNote(llm){
   if(llm==='demo')return`<div class="note mt12" style="margin-bottom:0">${ic('help')}<div>Offline reasoning engine: the agents' wording is assembled from your facts by rules, not by a language model. Add an OpenRouter or Anthropic key to the backend for live reasoning.</div></div>`;
   const[prov,...rest]=String(llm).split(':'),model=rest.join(':');
@@ -1643,10 +1683,8 @@ async function startDebateLive(q){
   S.liveRun={id,hyps:{}};
   // SSE pump. On a reconnect the server replays the run log from the start, so skip what was already delivered.
   const queue=[];let wake=null,delivered=0,rx=0,finished=false;
-  const es=new EventSource(API.url(`/analyses/${encodeURIComponent(id)}/stream`));
-  es.onopen=()=>{rx=0};
-  es.onmessage=m=>{rx++;if(rx<=delivered)return;delivered++;try{queue.push(JSON.parse(m.data))}catch(_){}if(wake){const f=wake;wake=null;f()}};
-  es.onerror=()=>{if(finished||!alive())es.close()};
+  const es=sseOpen(`/analyses/${encodeURIComponent(id)}/stream`,{open(){rx=0},stop:()=>finished||!alive(),
+    message(data){rx++;if(rx<=delivered)return;delivered++;try{queue.push(JSON.parse(data))}catch(_){}if(wake){const f=wake;wake=null;f()}}});
   const next=async()=>{const t0=Date.now();while(!queue.length){if(!alive()||Date.now()-t0>180000)return null;await new Promise(r=>{wake=r;setTimeout(r,1000)})}return queue.shift()};
   let cards=false;
   const showCards=()=>{if(cards)return;cards=true;step(1,'Specialists analyzing independently');
@@ -2039,14 +2077,14 @@ function renderMe(){
   const L=lvl(),p=lvlPct(),st=stats();
   $('#s-me').innerHTML=`<div class="hdr"><div><div class="eyebrow">Your space</div><h1 class="h1">You, <em>in context</em></h1></div></div>
   <div class="card"><div class="prof"><div class="bigAv">${ringSvg(84,5,p)}<div class="face">${esc(initialOf(NAME()))}</div></div><div style="flex:1"><div class="h2">${esc(NAME())}</div><div class="small">Level ${L.n} · ${L.name}</div><div class="xpBar"><i style="width:${(p*100).toFixed(0)}%"></i></div><div class="small mt8">${L.next?`${S.xp-L.from} / ${L.to-L.from} XP to ${L.next[1]}`:'Max level reached'}</div></div></div>
-  <div class="stats3 mt16"><div class="stat"><b>${S.streak}</b><span>day streak</span></div><div class="stat"><b>${S.badges.size}</b><span>badges</span></div><div class="stat"><b>${S.unlocked?1:0}</b><span>insights</span></div></div></div>${profilesCard()}
+  <div class="stats3 mt16"><div class="stat"><b>${S.streak}</b><span>day streak</span></div><div class="stat"><b>${S.badges.size}</b><span>badges</span></div><div class="stat"><b>${S.unlocked?1:0}</b><span>insights</span></div></div></div>${profilesCard()}${accountCard()}
   <div class="secTitle"><div class="h3">Badges</div><span class="small">${S.badges.size} of ${BADGES.length}</span></div>
   <div class="card"><div class="badges">${BADGES.map(([k,e,n])=>`<div class="badge ${S.badges.has(k)?'':'locked'} ${S.fresh===k?'fresh':''}"><div class="b">${ic(e)}</div>${n}</div>`).join('')}</div></div>
   <div class="secTitle"><div><div class="h3">Agent access</div><div class="small">Choose what each specialist may read</div></div></div>
   <div class="card" style="padding-top:8px;padding-bottom:12px">${AG.map(a=>`<div class="setRow">${agAv(a,40)}<div><div class="t">${a.name}</div><div class="s">${a.reads}</div></div><button class="tog ${S.paused.has(a.k)?'':'on'}" style="--c:${T[a.k].hex}" onclick="toggleAgent('${a.k}',this)" aria-label="Allow ${a.name}" aria-pressed="${!S.paused.has(a.k)}"><i></i></button></div>`).join('')}</div>
   <div class="secTitle"><div class="h3">Data sources</div></div>
   <div class="card" style="padding-top:8px">${(isPersonal()?sourcesPersonal(st):[['lab','Lab reports',`${st.labN} values · PDF + scans`],['sym','Daily check-ins',`${st.symN} symptom logs`],['cyc','Cycle history','4 cycles · manual'],['slp','Sleep app',`${st.slN} nights · CSV import`],['med','Medications',`${st.medN} change${st.medN>1?'s':''} · manual`]]).map(([k,t,s])=>`<div class="setRow"><div class="bub" style="background:${T[k].hex}">${ic(T[k].icon)}</div><div><div class="t">${t}</div><div class="s">${s}</div></div><span class="synced">Synced</span></div>`).join('')}
-  ${API.on?`<button class="btn ghost block mt12" onclick="openLog();setTimeout(()=>logForm('scan'),80)">${ic('doc')}Upload a lab report</button>
+  ${canWrite()?`<button class="btn ghost block mt12" onclick="openLog();setTimeout(()=>logForm('scan'),80)">${ic('doc')}Upload a lab report</button>
   `:''}<button class="btn ghost block mt12" onclick="pickImport()">${ic('upload')}Import CSV / JSON</button></div>
   <div class="card pearlCard"><div class="row" style="align-items:flex-start"><div class="bub" style="background:var(--lab)">${ic('shield')}</div><div><div class="h3">Private by design</div><div class="small" style="margin-top:3px">${API.on?privacyText():'Stored on this device. Agents only see the records scoped to your question, and every conclusion keeps a link back to its source.'}</div></div></div></div>
   ${API.base?'':`<button class="btn ghost block" onclick="location.reload()">Reset demo</button>`}`;
@@ -2061,7 +2099,17 @@ const recCount=p=>Object.values(p.counts||{}).reduce((a,b)=>a+b,0);
 function privacyText(){
   const host=(API.base.match(/^https?:\/\/([^/]+)/)||[0,API.base])[1],h=S.health||{},llm=engineLabel(h.llm),vis=engineLabel(h.vision);
   const why=h.llm==='demo'?'the built-in rules engine, so nothing leaves that server':llm?`<b style="color:var(--ink)">${esc(llm)}</b>`:'the reasoning engine';
-  return`Your records are stored on the Hormony server at <b style="color:var(--ink)">${esc(host)}</b>. When you ask a question, only the records scoped to it are analysed by ${why}.${vis?` Photographed reports are read by <b style="color:var(--ink)">${esc(vis)}</b>.`:''} Every conclusion keeps a link back to its source.`;
+  return`Your records are stored on the Hormony server at <b style="color:var(--ink)">${esc(host)}</b>, visible only to your account. When you ask a question, only the records scoped to it are analysed by ${why}.${vis?` Photographed reports are read by <b style="color:var(--ink)">${esc(vis)}</b>.`:''} Every conclusion keeps a link back to its source.`;
+}
+function accountCard(){
+  if(!API.on||!AUTH)return'';
+  return`<div class="secTitle"><div class="h3">Account</div></div>
+  <div class="card" style="padding-top:8px"><div class="setRow"><div class="bub" style="background:var(--plum)">${ic('user')}</div><div style="min-width:0"><div class="t" style="overflow:hidden;text-overflow:ellipsis">${esc(AUTH.email)}</div><div class="s">Your profiles are private to this account</div></div><button class="btn sm ghost" style="margin-left:auto" onclick="signOut()">Sign out</button></div></div>`;
+}
+function signOut(){
+  const email=AUTH&&AUTH.email;setAuth(null);
+  S.profile=null;S.profiles=[];S.analysis=null;S.liveRun=null;S.source=undefined;PID='';E.splice(0,E.length);   // nothing of theirs stays in memory
+  W.mode='signin';W.email=email||'';W.note='';showWelcome('signin');toast('Signed out');
 }
 function profilesCard(){
   if(!API.on)return'';
@@ -2081,7 +2129,7 @@ async function deleteProfile(btn){
   btn.disabled=true;btn.textContent='Deleting…';
   try{await API.del(`/profiles/${encodeURIComponent(PID)}`)}
   catch(e){btn.disabled=false;btn.textContent='Delete everything';return toast(errMsg(e),'help')}
-  store.set('hormony.game.'+PID,null);store.set('hormony.profile',null);
+  store.set('hormony.game.'+PID,null);store.set(profKey(),null);
   S.profiles=(S.profiles||[]).filter(p=>p.id!==PID);S.profile=null;PID='';
   closeSheet();showWelcome('intro');
 }
@@ -2091,7 +2139,7 @@ async function pickProfile(id){
 }
 
 /* ---------- welcome: start your own record or explore the demo ---------- */
-const W={step:'intro',cycle:28};
+const W={step:'intro',cycle:28,mode:store.get('hormony.lastEmail')?'signin':'signup',email:store.get('hormony.lastEmail')||'',note:''};
 const localISO=dt=>dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
 function showWelcome(step='intro'){W.step=step;renderWelcome();const el=$('#welcome');el.classList.add('on');el.scrollTop=0;closeSheet()}
 function hideWelcome(){$('#welcome').classList.remove('on')}
@@ -2103,6 +2151,16 @@ function renderWelcome(){
     <button class="btn primary block" onclick="retryBoot(this)">Try again</button>
     <button class="btn ghost block mt12" onclick="hideWelcome();toast('Offline · showing demo data','help')">Explore the demo instead</button>
     <p class="small" style="${ctr};margin-top:8px">The demo uses sample data. Your record isn't touched.</p></div>`;return}
+  if(W.step==='signin'){const up=W.mode==='signup',host=(API.base.match(/^https?:\/\/([^/]+)/)||[0,API.base])[1];
+    el.innerHTML=`<div class="wBody">${orb}<div class="eyebrow" style="${ctr}">${up?'Create your account':'Welcome back'}</div><h1 class="h1" style="${ctr};margin-top:6px">${up?'Your hormones, <em>in context</em>':'Sign in to <em>Hormony</em>'}</h1>
+    <p class="p" style="${ctr};margin:12px auto 22px;max-width:310px">${up?'An account keeps your records private to you. Sign in on any phone to pick up where you left off.':'Your records are private to your account.'}</p>
+    ${W.note?`<div class="note">${ic('help')}<div>${esc(W.note)}</div></div>`:''}
+    <div class="field"><label for="wEmail">Email</label><input class="inp" id="wEmail" type="email" inputmode="email" autocomplete="email" autocapitalize="none" spellcheck="false" maxlength="255" value="${esc(W.email||'')}"></div>
+    <div class="field"><label for="wPass">Password</label><input class="inp" id="wPass" type="password" maxlength="128" autocomplete="${up?'new-password':'current-password'}" placeholder="${up?'At least 8 characters':''}" onkeydown="if(event.key==='Enter')authSubmit($('#wGo'))"></div>
+    <div class="small" id="wErr" role="alert" style="color:#b4432f;min-height:18px;margin-top:8px"></div>
+    <button class="btn primary block mt8" id="wGo" onclick="authSubmit(this)">${up?'Create account':'Sign in'}</button>
+    <p class="small" style="${ctr};margin-top:16px">${up?'Already have an account?':'New to Hormony?'} <button style="color:var(--plum);font-weight:600" onclick="W.mode='${up?'signin':'signup'}';W.note='';W.email=$('#wEmail').value.trim();renderWelcome()">${up?'Sign in':'Create an account'}</button></p>
+    <p class="small" style="${ctr};margin-top:4px">Server · ${esc(host)}</p></div>`;return}
   if(W.step==='setup'){const t=new Date(),min=new Date(t.getFullYear(),t.getMonth(),t.getDate()-120);
     el.innerHTML=`<div class="wBody"><div class="row" style="gap:12px"><button class="backBtn" onclick="${S.profile?'hideWelcome()':"showWelcome('intro')"}" aria-label="Back">${ic('back')}</button><div><div class="eyebrow">Your record</div><div class="h2">Set up <em>Hormony</em></div></div></div>
     <p class="small mt12">Three quick things so cycle days line up. Everything else you log as you go.</p>
@@ -2118,7 +2176,23 @@ function renderWelcome(){
   <button class="btn primary block" onclick="showWelcome('setup')">${ic('plus')}${mine.length?'Start a new record':'Start my own record'}</button>
   <p class="small" style="${ctr};margin:8px 0 20px">It starts empty. Nothing is pre-filled.</p>
   <button class="btn ghost block" onclick="useDemo(this)">Explore the demo</button>
-  <p class="small" style="${ctr};margin-top:8px">Sample data for a fictional person, Nancy: 90 days of logs, labs and sleep.</p></div>`;
+  <p class="small" style="${ctr};margin-top:8px">Sample data for a fictional person, Nancy: 90 days of logs, labs and sleep.</p>
+  ${AUTH?`<p class="small" style="${ctr};margin-top:22px">Signed in as ${esc(AUTH.email)} · <button style="color:var(--plum);font-weight:600" onclick="signOut()">Sign out</button></p>`:''}</div>`;
+}
+async function authSubmit(btn){
+  const up=W.mode==='signup',email=$('#wEmail').value.trim(),password=$('#wPass').value,err=$('#wErr');err.textContent='';W.email=email;
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){err.textContent='Enter your email address.';return $('#wEmail').focus()}
+  if(up&&password.length<8){err.textContent='Use at least 8 characters for the password.';return $('#wPass').focus()}
+  if(!password){err.textContent='Enter your password.';return $('#wPass').focus()}
+  const lbl=btn.innerHTML;btn.disabled=true;btn.textContent=up?'Creating your account…':'Signing in…';
+  try{
+    const a=await API.post(up?'/auth/register':'/auth/login',{email,password});
+    setAuth({token:a.access_token,email:a.email,user_id:a.user_id});store.set('hormony.lastEmail',a.email);W.note='';
+    await afterSignIn();
+    if(up)toast('Account created','sparkle');
+  }catch(e){
+    err.textContent=e.status===401?'Wrong email or password.':e.status===422?'Check the email address, and use at least 8 characters for the password.':errMsg(e);
+    btn.disabled=false;btn.innerHTML=lbl}
 }
 const wCycTxt=()=>`${W.cycle} days<small>${W.cycle<=35?'typical range':'longer than typical'}</small>`;
 function wCycle(dv){W.cycle=Math.max(21,Math.min(45,W.cycle+dv));const v=$('#wCyc');v.innerHTML=wCycTxt();replay(v);buzz(5)}
