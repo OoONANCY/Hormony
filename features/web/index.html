@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Hormony · Forecasting preview</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Hormony</div>
+    <div class="subtitle">Hormone Prediction and Forecasting</div>
+  </header>
+
+  <main class="wrap">
+    <section class="card hero">
+      <div class="label">Next period</div>
+      <div class="value" id="next-start">—</div>
+      <div class="meta">
+        <span id="window">—</span>
+        <span class="dot">·</span>
+        <span id="conf-cycle">—</span>
+        <span class="dot">·</span>
+        <span id="n-cycles">—</span>
+      </div>
+    </section>
+
+    <section class="card chart-card">
+      <div class="card-head">
+        <div>
+          <div class="label" id="hormone-name">—</div>
+          <div class="sub" id="hormone-method">—</div>
+        </div>
+        <div class="pill" id="hormone-conf">—</div>
+      </div>
+      <div class="chart-wrap">
+       <canvas id="hormone-chart"></canvas>
+      </div>
+    </section>
+
+    <footer class="foot">
+      <span>As of <span id="as-of">—</span></span>
+    </footer>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
