@@ -47,9 +47,10 @@ def _observations(stats: dict) -> List[dict]:
     out: List[dict] = []
     focus, med, labs, sl = stats.get("focus"), stats.get("med"), stats.get("labs"), stats.get("sleep")
     f_low = lname(focus["name"]) if focus else ""
+    days = "{}–{}".format(*(stats.get("late_window") or [20, 28]))
     if focus:
         out.append({"kind": "symptom", "title": "Symptom clustering",
-                    "text": f"{focus['late_n']} of {focus['n']} {f_low} logs fell on cycle days 20–28, across "
+                    "text": f"{focus['late_n']} of {focus['n']} {f_low} logs fell on cycle days {days}, across "
                             f"{focus['cycles_with']} of {focus['cycles_total']} cycles observed."})
     if labs:
         parts = []
@@ -69,7 +70,7 @@ def _observations(stats: dict) -> List[dict]:
     if sl:
         parts = []
         if med and sl.get("before_avg") is not None and sl.get("after_avg") is not None:
-            parts.append(f"on nights outside cycle days 20–28, average sleep went from {sl['before_avg']:.1f} h before "
+            parts.append(f"on nights outside cycle days {days}, average sleep went from {sl['before_avg']:.1f} h before "
                          f"{med['label']} to {sl['after_avg']:.1f} h after")
         if sl.get("late_avg") is not None and sl.get("other_avg") is not None:
             parts.append(f"late-luteal nights averaged {sl['late_avg']:.1f} h vs {sl['other_avg']:.1f} h on other nights")

@@ -1,14 +1,15 @@
 from __future__ import annotations
 from datetime import date as Date, datetime as DateTime
 from typing import Optional
-from sqlalchemy import String, Float, Integer, Date, DateTime, JSON, Text, func
+from sqlalchemy import String, Float, Integer, Date, DateTime, JSON, PrimaryKeyConstraint, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 from .db import Base
 
 
 class Event(Base):
     __tablename__ = "events"
-    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    __table_args__ = (PrimaryKeyConstraint("patient_id", "id"),)  # record ids are unique per person, not globally
+    id: Mapped[str] = mapped_column(String(40))
     patient_id: Mapped[str] = mapped_column(String(40), index=True)
     date: Mapped[Date] = mapped_column(Date, index=True)
     type: Mapped[str] = mapped_column(String(10))
@@ -20,6 +21,15 @@ class Event(Base):
     note: Mapped[str] = mapped_column(Text, default="")
     source: Mapped[str] = mapped_column(String(80), default="")
     source_ref: Mapped[Optional[str]] = mapped_column(String(200), nullable=True, default=None)
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
+
+
+class Profile(Base):
+    __tablename__ = "profiles"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    name: Mapped[str] = mapped_column(String(60))
+    kind: Mapped[str] = mapped_column(String(10), default="personal")   # demo | personal
+    cycle_length: Mapped[int] = mapped_column(Integer, default=28)
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
 
 

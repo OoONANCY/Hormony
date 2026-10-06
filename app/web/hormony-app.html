@@ -495,6 +495,14 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 @keyframes pop{0%{opacity:0;transform:scale(.92) translateY(10px)}100%{opacity:1;transform:none}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
+/* welcome / onboarding (new component) */
+.welcome{position:absolute;inset:0;z-index:190;overflow-y:auto;scrollbar-width:none;background:radial-gradient(circle at 50% 22%,#fbf8f3,var(--bg) 70%);opacity:0;visibility:hidden;transition:opacity .45s,visibility 0s .45s}
+.welcome.on{opacity:1;visibility:visible;transition:opacity .45s}
+.wBody{max-width:420px;margin:0 auto;padding:calc(var(--top) + 28px) 22px calc(32px + env(safe-area-inset-bottom));animation:fadeUp .6s var(--ease) both}
+.wOrb{position:relative;width:92px;height:92px;margin:0 auto 18px;display:grid;place-items:center}
+.wOrb::after{content:"";position:absolute;inset:0;border-radius:50%;border:1.5px dashed rgba(90,61,110,.35);animation:spin 14s linear infinite}
+.wProf{display:flex;align-items:center;gap:12px;width:100%;text-align:left}
+.iCard.q .ttl{filter:none}
 </style>
 </head>
 <body>
@@ -653,6 +661,7 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
   <div class="sheet" id="sheet" role="dialog" aria-modal="true"></div>
   <div class="toast" id="toast" role="status" aria-live="polite"></div>
   <div class="levelup" id="levelup"></div>
+  <div class="welcome" id="welcome" role="dialog" aria-modal="true" aria-label="Welcome to Hormony"></div>
   <canvas class="fx" id="fx"></canvas>
   <div class="splash" id="splash" onclick="this.classList.add('off')">
     <div class="logo">
@@ -740,6 +749,7 @@ const WD=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'
 let TODAY=90, MED_DAY=46;                        // live mode overwrites these in loadLedger()
 const STARTS=[-17,11,39,67]; let NEXT_START=95;  // period start days (Jun 14, Jul 12, Aug 9, Sep 6)
 let DAY0=new Date(2026,6,1);                     // calendar date of day index 0
+let CYCLE_N=28;                                  // usual cycle length (the profile's, in live mode)
 const dateOf=d=>new Date(DAY0.getFullYear(),DAY0.getMonth(),DAY0.getDate()+d);
 const isoOf=d=>{const x=dateOf(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
 const dayIdx=iso=>{const[y,m,dd]=String(iso).split('-').map(Number);return Math.round((Date.UTC(y,m-1,dd)-Date.UTC(DAY0.getFullYear(),DAY0.getMonth(),DAY0.getDate()))/864e5)};
@@ -747,8 +757,10 @@ const fmt=d=>{const x=dateOf(d);return MON[x.getMonth()]+' '+x.getDate()};
 const md=d=>{const x=dateOf(d);return String(x.getMonth()+1).padStart(2,'0')+String(x.getDate()).padStart(2,'0')};
 const cycIdx=d=>{let k=0;STARTS.forEach((s,i)=>{if(d>=s)k=i});return k};
 const cd=d=>d-STARTS[cycIdx(d)]+1;
-const phase=c=>c<=5?'Period':c<=13?'Follicular':c<=16?'Ovulation':c<=19?'Early luteal':'Late luteal';
-const isLate=c=>c>=20&&c<=28;
+const phase=c=>{const ov=CYCLE_N-14;return c<=5?'Period':c<=ov-1?'Follicular':c<=ov+2?'Ovulation':c<=ov+5?'Early luteal':'Late luteal'};
+const isLate=c=>c>=CYCLE_N-8&&c<=CYCLE_N;      // late luteal: the last 9 days (20–28 in a 28-day cycle)
+const lateTxt=()=>`${CYCLE_N-8}–${CYCLE_N}`;
+const cycLbl=d=>{const c=cd(d);return c<1?'Before your first logged period':`Cycle day ${c} · ${phase(c)}`};
 const fmtH=h=>{const H=Math.floor(h),M=Math.round((h-H)*60);return M?`${H}h ${M}m`:`${H}h`};
 
 /* ---------- mock longitudinal record (evidence ledger) ---------- */
@@ -818,10 +830,27 @@ const agAv=(a,s=48)=>`<div class="av" style="--c:${T[a.k].hex};width:${s}px;heig
 /* ---------- gamification state ---------- */
 const LEVELS=[[1,'Curious',0],[2,'Noticer',200],[3,'Pattern Seeker',350],[4,'Signal Sleuth',500],[5,'Rhythm Reader',800]];
 const BADGES=[['first','leaf','First log'],['streak7','flame','7-day streak'],['lab','flask','Lab uploader'],['pattern','unlock','Pattern unlocked'],['debate','scale','First debate'],['quest','target','Quest complete'],['scan','scan','Report scanner'],['brief','doc','Clinician-ready'],['exp','dna','Experimenter'],['sleuth','search','Signal Sleuth'],['streak30','moon','30-day streak'],['three','star','3 insights']];
-const S={xp:410,streak:12,checked:false,energy:2,sleepH:6.5,tags:new Set(),evidence:80,need:{energy:false,sleep:false},
+const DEMO_GAME=()=>({xp:410,streak:12,checked:false,energy:2,sleepH:6.5,tags:new Set(),evidence:80,need:{energy:false,sleep:false},
   unlocked:false,debated:false,briefed:false,quest:{checkin:false,timeline:false,ask:false},
-  badges:new Set(['first','streak7','lab']),paused:new Set(),range:90,lanes:new Set(ORDER),sel:87,feedN:12,
-  back:null,fast:false,exp:false,current:'today',qs:new Set([0,1,2]),scanRun:0};
+  badges:new Set(['first','streak7','lab']),exp:false,qs:new Set([0,1,2]),whySeen:false,lastCheck:null,analyses:0,lastAnalysis:null});
+const S=Object.assign(DEMO_GAME(),{paused:new Set(),range:90,lanes:new Set(ORDER),sel:87,feedN:12,
+  back:null,fast:false,current:'today',scanRun:0});
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{v==null?localStorage.removeItem(k):localStorage.setItem(k,v)}catch(e){}}};
+function personalGame(pid,today,yesterday){   // a real person starts at zero; progress is kept per profile on this device
+  let g={};try{g=JSON.parse(store.get('hormony.game.'+pid)||'{}')||{}}catch(e){}
+  const same=g.day===today,c=same&&g.checkin||null;
+  return{xp:g.xp||0,streak:g.lastCheck===today||g.lastCheck===yesterday?(g.streak||0):0,lastCheck:g.lastCheck||null,
+    checked:!!c,energy:c?c.energy:2,sleepH:c?c.sleepH:7,tags:new Set(c?c.tags:[]),evidence:0,need:{energy:false,sleep:false},
+    unlocked:!!g.lastAnalysis,debated:!!g.debated,briefed:!!g.briefed,quest:same&&g.quest?g.quest:{checkin:false,timeline:false,ask:false},
+    badges:new Set(g.badges||[]),exp:!!g.exp,qs:new Set([0,1,2]),whySeen:false,analyses:g.analyses||0,lastAnalysis:g.lastAnalysis||null,
+    saved:c?{sleep:c.sleepH,tags:new Set(c.sent||[])}:null};
+}
+function saveGame(){
+  if(!isPersonal())return;
+  store.set('hormony.game.'+PID,JSON.stringify({day:isoOf(TODAY),xp:S.xp,streak:S.streak,lastCheck:S.lastCheck,quest:S.quest,badges:[...S.badges],
+    debated:S.debated,briefed:S.briefed,exp:S.exp,analyses:S.analyses,lastAnalysis:S.lastAnalysis,
+    checkin:S.checked?{energy:S.energy,sleepH:S.sleepH,tags:[...S.tags],sent:S.saved?[...S.saved.tags]:[]}:null}));
+}
 function lvl(xp=S.xp){let L=LEVELS[0];LEVELS.forEach(l=>{if(xp>=l[2])L=l});const nx=LEVELS.find(l=>l[2]>xp);return{n:L[0],name:L[1],from:L[2],to:nx?nx[2]:L[2],next:nx}}
 const lvlPct=()=>{const l=lvl();return l.next?(S.xp-l.from)/(l.to-l.from):1};
 
@@ -830,15 +859,30 @@ const lvlPct=()=>{const l=lvl();return l.next?(S.xp-l.from)/(l.to-l.from):1};
    reads/writes the real evidence ledger and streams real analyses. Without either it stays the
    self-contained prototype on mock data. Markup and styles are untouched in both modes. */
 const HCFG=window.HORMONY_CONFIG||{};
-const PID=HCFG.patientId||'nancy';
+const SAVED_PROFILE=(()=>{try{return JSON.parse(store.get('hormony.profile')||'null')}catch(e){return null}})();
+let PID=(SAVED_PROFILE&&SAVED_PROFILE.id)||HCFG.patientId||'';   // which profile this device last used
+const isPersonal=()=>!!(S.profile&&S.profile.kind==='personal');
+const NAME=()=>S.profile?S.profile.name:'Nancy';
+const initialOf=n=>(String(n||'').trim()[0]||'·').toUpperCase();
 const API={
   base:String(HCFG.apiUrl||new URLSearchParams(location.search).get('api')||'').replace(/\/+$/,''),
-  get on(){return !!this.base&&S.source!=='offline'},
+  get on(){return !!this.base&&S.source==='live'},
   url(p){return this.base+p},
-  async req(p,opt){const r=await fetch(this.url(p),opt);if(!r.ok)throw new Error(r.status+' '+(await r.text()).slice(0,200));return r.json()},
-  get(p){return this.req(p)},
-  post(p,b){return this.req(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})}
+  async req(p,opt={},ms=0){
+    const ctl=ms&&typeof AbortController!=='undefined'?new AbortController():null,t=ctl&&setTimeout(()=>ctl.abort(),ms);
+    let r;try{r=await fetch(this.url(p),ctl?Object.assign({},opt,{signal:ctl.signal}):opt)}finally{if(t)clearTimeout(t)}
+    if(!r.ok){const txt=await r.text();let det=txt;try{const j=JSON.parse(txt);det=typeof j.detail==='string'?j.detail:j.detail?JSON.stringify(j.detail):txt}catch(_){}
+      const e=new Error(r.status+' '+String(det).slice(0,200));e.status=r.status;e.detail=String(det);throw e}
+    return r.status===204?null:r.json()},
+  get(p,ms){return this.req(p,{},ms)},
+  post(p,b){return this.req(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)})},
+  del(p){return this.req(p,{method:'DELETE'})}
 };
+function errMsg(e){
+  if(!e)return'Something went wrong.';
+  if(e.status){const t=String(e.detail||e.message).replace(/^\d+\s*/,'').trim();return(t[0]||'').toUpperCase()+t.slice(1,220)}
+  return"Can't reach the Hormony server. Check that it's running and that you're on the same network.";
+}
 const TYPE_IN={cycle:'cyc',cyc:'cyc',lab:'lab',symptom:'sym',sym:'sym',sleep:'slp',slp:'slp',med:'med'};
 const AG_IN={lab:'lab',symptom:'sym',cycle:'cyc',sym:'sym',cyc:'cyc'}, AG_OUT={lab:'lab',sym:'symptom',cyc:'cycle'};
 const SYMCODE={Fatigue:'F',Anxiety:'A',Headache:'H',Bloating:'B',Cramps:'C','Low mood':'M','Brain fog':'G'};
@@ -863,8 +907,9 @@ async function loadLedger(){
   evs.forEach(e=>{if(e.type==='cyc'&&/period started/i.test(e.name))st.add(e.d)});
   if(st.size){STARTS.splice(0,STARTS.length,...[...st].sort((a,b)=>a-b));
     const gaps=STARTS.slice(1).map((v,i)=>v-STARTS[i]).sort((a,b)=>a-b);
-    NEXT_START=STARTS[STARTS.length-1]+(gaps.length?gaps[Math.floor(gaps.length/2)]:28)}
-  const med=evs.filter(e=>e.type==='med').sort((a,b)=>a.d-b.d)[0];if(med)MED_DAY=med.d;
+    NEXT_START=STARTS[STARTS.length-1]+(gaps.length?gaps[Math.floor(gaps.length/2)]:CYCLE_N)}
+  else{STARTS.splice(0,STARTS.length,0);NEXT_START=CYCLE_N}   // no period logged yet: count from the window start
+  const med=evs.filter(e=>e.type==='med').sort((a,b)=>a.d-b.d)[0];MED_DAY=med?med.d:null;
   E.splice(0,E.length,...evs);
 }
 async function persist(body){
@@ -873,12 +918,45 @@ async function persist(body){
   catch(err){toast('Saved here only · backend unreachable','help');return null}
 }
 async function syncLedger(){if(!API.on)return;try{await loadLedger();afterData()}catch(e){}}
+let SPLASH_T0=Date.now();
+function hideSplash(){const sp=$('#splash');setTimeout(()=>{sp.classList.add('off');sp.onclick=()=>sp.classList.add('off')},Math.max(0,(RM?150:1500)-(Date.now()-SPLASH_T0)))}
 async function bootLive(){
   if(!API.base)return;
-  try{await loadLedger();S.source='live'}
-  catch(err){S.source='offline';setTimeout(()=>toast('Offline · showing demo data','help'),1700);return}
+  let health,profs;
+  try{[health,profs]=await Promise.all([API.get('/health',10000),API.get('/profiles',10000)])}
+  catch(err){hideSplash();return bootOffline()}
+  S.health=health;S.profiles=profs;
+  const p=profs.find(x=>x.id===PID);
+  if(!p){hideSplash();return showWelcome('intro')}
+  try{await switchProfile(p)}catch(err){hideSplash();return bootOffline()}
+  hideWelcome();hideSplash();
+}
+function bootOffline(){
+  S.source='offline';
+  if(SAVED_PROFILE&&SAVED_PROFILE.kind==='personal')return showWelcome('offline');   // never show demo data as if it were theirs
+  setTimeout(()=>toast('Offline · showing demo data','help'),1700);
+}
+async function switchProfile(p){
+  const prev=[PID,CYCLE_N];PID=p.id;CYCLE_N=p.cycle_length||28;
+  try{await loadLedger()}catch(err){[PID,CYCLE_N]=prev;throw err}
+  S.profile=p;S.source='live';
+  store.set('hormony.profile',JSON.stringify({id:p.id,kind:p.kind,name:p.name}));
+  Object.assign(S,p.kind==='personal'?personalGame(p.id,isoOf(TODAY),isoOf(TODAY-1)):Object.assign(DEMO_GAME(),{saved:null}));
+  S.analysis=null;S.liveRun=null;S.qsFor=null;S.fresh=null;S.hover=null;S.feedN=12;S.sel=p.kind==='personal'?TODAY:87;G=null;
+  if(S.lastAnalysis){try{S.analysis=Object.assign({id:S.lastAnalysis},await API.get(`/analyses/${encodeURIComponent(S.lastAnalysis)}`))}
+    catch(err){S.lastAnalysis=null;S.unlocked=false}}
+  renderHome();
+  if(S.current!=='today')go('today');
+}
+function renderHome(){
+  const hr=new Date().getHours();
+  $('#greet').innerHTML=`${hr<12?'Good morning':hr<18?'Good afternoon':'Good evening'},<br><em>${esc(NAME())}</em>`;
   $('#todayDate').textContent=`${WD[dateOf(TODAY).getDay()]} · ${fmt(TODAY)}`;
-  renderTodayDynamic();renderStats();if(S.current==='timeline')renderTimeline();
+  renderCheckin();renderTodayDynamic();renderStats();
+}
+async function refreshProfiles(){
+  if(!API.on)return;
+  try{S.profiles=await API.get('/profiles');const p=S.profiles.find(x=>x.id===PID);if(p)S.profile=p;const c=$('#profCard');if(c&&S.current==='me')c.outerHTML=profilesCard()}catch(e){}
 }
 function pickImport(){
   if(!API.on)return toast('Connect the backend to import files','upload');
@@ -891,6 +969,7 @@ function pickImport(){
   inp.click();
 }
 window.hormonyBack=()=>{    // Android back button, called by the Expo shell
+  if($('#welcome').classList.contains('on')){if(W.step==='setup'){S.profile?hideWelcome():showWelcome('intro');return true}return false}
   if($('#levelup').classList.contains('on')){$('#levelup').classList.remove('on');return true}
   if($('#sheet').classList.contains('on')){closeSheet();return true}
   if(S.current==='debate'){leaveDebate();return true}
@@ -917,7 +996,7 @@ function go(name,opts={}){
   if(name==='insight')renderInsight();
   if(name==='graph')startGraph();
   if(name==='brief')renderBrief();
-  if(name==='me')renderMe();
+  if(name==='me'){renderMe();refreshProfiles()}
   buzz(5);
 }
 function push(name){S.back=S.current;go(name)}
@@ -936,13 +1015,13 @@ function xp(n,anchor){
   if(anchor&&anchor.getBoundingClientRect){const r=anchor.getBoundingClientRect();if(r.width){x=r.left-ph.left+r.width/2;y=Math.max(60,r.top-ph.top)}}
   const f=document.createElement('div');f.className='xpFloat';f.textContent='+'+n+' XP';f.style.left=x+'px';f.style.top=y+'px';
   $('#phone').appendChild(f);setTimeout(()=>f.remove(),1600);
-  renderAvatar();
+  renderAvatar();saveGame();
   const after=lvl();if(after.n>before.n)setTimeout(()=>levelUp(after),1000);
 }
-function earn(k){if(S.badges.has(k))return;S.badges.add(k);S.fresh=k;const b=BADGES.find(x=>x[0]===k);if(b)setTimeout(()=>toast(`Badge earned · ${b[2]}`,'sparkle'),1400)}
+function earn(k){if(S.badges.has(k))return;S.badges.add(k);S.fresh=k;saveGame();const b=BADGES.find(x=>x[0]===k);if(b)setTimeout(()=>toast(`Badge earned · ${b[2]}`,'sparkle'),1400)}
 function levelUp(L){
   const el=$('#levelup');
-  el.innerHTML=`<div class="lvCard"><div class="eyebrow" style="color:var(--plum)">Level up</div><div class="lvOrb"><span>${L.n}</span></div><div class="h1" style="text-align:center">You're a <em>${L.name}</em></div><p class="p" style="margin:12px auto 24px;max-width:270px;text-align:center">You've given Hormony enough context to reason across your cycles. New: a weekly pattern digest.</p><button class="btn gold" onclick="$('#levelup').classList.remove('on')">Keep going</button></div>`;
+  el.innerHTML=`<div class="lvCard"><div class="eyebrow" style="color:var(--plum)">Level up</div><div class="lvOrb"><span>${L.n}</span></div><div class="h1" style="text-align:center">You're a <em>${L.name}</em></div><p class="p" style="margin:12px auto 24px;max-width:270px;text-align:center">${isPersonal()?'Every record you add gives the agents more context to reason across your cycles.':"You've given Hormony enough context to reason across your cycles. New: a weekly pattern digest."}</p><button class="btn gold" onclick="$('#levelup').classList.remove('on')">Keep going</button></div>`;
   el.classList.add('on');confetti(170,.5,.4);buzz([15,40,15]);if(L.n>=4)earn('sleuth');
 }
 
@@ -969,23 +1048,23 @@ function fxLoop(){
 
 /* ---------- header bits ---------- */
 function ringSvg(size,sw,p){const r=(size-sw)/2-1,c=2*Math.PI*r;return`<svg class="lvl" viewBox="0 0 ${size} ${size}" style="width:${size}px;height:${size}px"><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="rgba(30,26,34,.12)" stroke-width="${sw}"/><circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="url(#goldG)" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${(c*(1-p)).toFixed(1)}"/></svg>`}
-function renderAvatar(){$('#avatarBtn').innerHTML=ringSvg(46,3,lvlPct())+`<div class="face">N</div><div class="lvlBadge">${lvl().n}</div>`}
+function renderAvatar(){$('#avatarBtn').innerHTML=ringSvg(46,3,lvlPct())+`<div class="face">${esc(initialOf(NAME()))}</div><div class="lvlBadge">${lvl().n}</div>`}
 function renderStreak(){$('#streak').innerHTML=FLAME+`<span>${S.streak}</span>`}
 
 /* ---------- TODAY: cycle ring ---------- */
-const RC=150,R_SEG=118,SEG=360/28;
+const RC=150,R_SEG=118;let SEG=360/28;
 const dayA=c=>-90+(c-1)*SEG;
 const pt=(r,a)=>{const t=a*Math.PI/180;return[RC+r*Math.cos(t),RC+r*Math.sin(t)]};
 function arc(r,a0,a1,rev){const[x0,y0]=pt(r,a0),[x1,y1]=pt(r,a1),l=(a1-a0)>180?1:0;
   return rev?`M${x1.toFixed(2)} ${y1.toFixed(2)}A${r} ${r} 0 ${l} 0 ${x0.toFixed(2)} ${y0.toFixed(2)}`:`M${x0.toFixed(2)} ${y0.toFixed(2)}A${r} ${r} 0 ${l} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`}
-const segStyle=c=>c<=5?['#9a6bc0',1]:c<=13?['#9a6bc0',.24]:c<=16?['#9a6bc0',.72]:c<=19?['#9a6bc0',.4]:['#9a6bc0',.58];
+const segStyle=c=>{const ov=CYCLE_N-14;return c<=5?['#9a6bc0',1]:c<=ov-1?['#9a6bc0',.24]:c<=ov+2?['#9a6bc0',.72]:c<=ov+5?['#9a6bc0',.4]:['#9a6bc0',.58]};
 function renderRing(){
-  const tc=cd(TODAY),s0=STARTS[3];
+  const tc=cd(TODAY),s0=STARTS[cycIdx(TODAY)],N=Math.max(CYCLE_N,tc),ov=CYCLE_N-14;SEG=360/N;   // a late period stretches the ring
   let h=`<defs><filter id="glow" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter><filter id="soft" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="3.5"/></filter></defs>`;
   [94,82,70].forEach(r=>h+=`<circle cx="${RC}" cy="${RC}" r="${r}" fill="none" stroke="rgba(30,26,34,.06)"/>`);
-  for(let c=1;c<=28;c++){const[col,op]=segStyle(c),fut=c>tc;
+  for(let c=1;c<=N;c++){const[col,op]=segStyle(c),fut=c>tc;
     h+=`<path d="${arc(R_SEG,dayA(c)+.9,dayA(c+1)-.9)}" stroke="${col}" stroke-opacity="${fut?(op*.35).toFixed(2):op}" stroke-width="${c===tc?24:18}" fill="none" style="animation:segIn .5s ${c*22}ms both"/>`}
-  [['Period',1,5],['Follicular',6,13],['Ovulation',14,16],['Luteal',17,28]].forEach(([n,a,b],i)=>{
+  [['Period',1,5],['Follicular',6,ov-1],['Ovulation',ov,ov+2],['Luteal',ov+3,N]].forEach(([n,a,b],i)=>{
     const a0=dayA(a),a1=dayA(b+1),norm=(((a0+a1)/2)%360+360)%360,rev=norm>10&&norm<170;
     h+=`<path id="pl${i}" d="${arc(rev?143:133,a0,a1,rev)}" fill="none"/><text class="axisTxt" style="font-size:10px;letter-spacing:.14em;font-weight:700"><textPath href="#pl${i}" xlink:href="#pl${i}" startOffset="50%" text-anchor="middle">${n.toUpperCase()}</textPath></text>`});
   const evs=E.filter(e=>e.d>=s0&&e.d<=TODAY);
@@ -1002,7 +1081,7 @@ function renderRing(){
 function ringCenter(d){
   const c=cd(d),el=$('#ringCenter');let sub;
   if(d>TODAY)sub='Predicted';
-  else if(d===TODAY)sub=`~${NEXT_START-TODAY} days until your period`;
+  else if(d===TODAY){const n=NEXT_START-TODAY;sub=n>1?`~${n} days until your period`:n===1?'~1 day until your period':n===0?'Your period may start today':`Period expected around ${fmt(NEXT_START)}`}
   else{const ev=E.filter(e=>e.d===d&&e.type!=='slp'),sl=E.find(e=>e.d===d&&e.type==='slp');
     const p=ev.map(e=>e.type==='sym'?`${e.name} ${e.sev}/10`:e.type==='lab'?`${e.code||e.name} ${e.v}`:e.name);if(sl)p.push(`Sleep ${sl.h}h`);
     sub=p.length?p.slice(0,3).join(' · '):'Nothing logged'}
@@ -1011,8 +1090,8 @@ function ringCenter(d){
 }
 function initRing(){
   const w=$('#ringWrap');let active=false,last=null,timer;
-  const at=ev=>{const r=w.getBoundingClientRect(),x=(ev.clientX-r.left)/r.width*300-RC,y=(ev.clientY-r.top)/r.height*300-RC;const a=(Math.atan2(y,x)*180/Math.PI+90+360)%360;return Math.min(28,Math.floor(a/SEG)+1)};
-  const show=c=>{if(c===last)return;last=c;buzz(4);ringCenter(STARTS[3]+c-1);const[x,y]=pt(R_SEG,dayA(c)+SEG/2),g=$('#scrubDot');if(g){g.setAttribute('transform',`translate(${x.toFixed(1)} ${y.toFixed(1)})`);g.style.opacity=1}};
+  const at=ev=>{const r=w.getBoundingClientRect(),x=(ev.clientX-r.left)/r.width*300-RC,y=(ev.clientY-r.top)/r.height*300-RC;const a=(Math.atan2(y,x)*180/Math.PI+90+360)%360;return Math.min(Math.round(360/SEG),Math.floor(a/SEG)+1)};
+  const show=c=>{if(c===last)return;last=c;buzz(4);ringCenter(STARTS[cycIdx(TODAY)]+c-1);const[x,y]=pt(R_SEG,dayA(c)+SEG/2),g=$('#scrubDot');if(g){g.setAttribute('transform',`translate(${x.toFixed(1)} ${y.toFixed(1)})`);g.style.opacity=1}};
   w.addEventListener('pointerdown',e=>{active=true;try{w.setPointerCapture(e.pointerId)}catch(_){}clearTimeout(timer);show(at(e));$('#ringHint').style.opacity=0});
   w.addEventListener('pointermove',e=>{if(active)show(at(e))});
   const end=()=>{if(!active)return;active=false;timer=setTimeout(()=>{last=null;ringCenter(TODAY);const g=$('#scrubDot');if(g)g.style.opacity=0},2200)};
@@ -1020,8 +1099,25 @@ function initRing(){
 }
 
 /* ---------- TODAY: unlock card (the core game loop: log more → evidence → unlock) ---------- */
+function readiness(){   // two weeks of check-ins, one lab result and a full cycle make a first comparison meaningful
+  const days=new Set(E.filter(e=>e.type==='sym'||e.type==='slp').map(e=>e.type==='slp'?e.d+1:e.d)).size;
+  const lab=E.some(e=>e.type==='lab'),cyc=Math.max(0,Math.min(1,(TODAY-STARTS[0]+1)/CYCLE_N));
+  return{days,lab,cyc,pct:Math.min(100,Math.round(Math.min(14,days)/14*60+(lab?20:0)+cyc*20))};
+}
+function renderUnlockPersonal(el){
+  const R=S.analysis&&S.analysis.report,rd=readiness(),ready=rd.pct>=100;
+  el.classList.toggle('open',!!R);
+  if(R){el.innerHTML=`<div class="row" style="gap:12px"><div class="lockBadge">${ic('sparkle')}</div><div style="flex:1"><div class="eyebrow" style="color:var(--plum)">Latest analysis</div><div class="h3" style="margin-top:2px">${esc(R.headline||'Your analysis is ready')}</div></div></div>
+    <div class="small" style="margin-top:10px">${R.confidence_word?esc(R.confidence_word)+' confidence · ':''}Keep logging and ask again to see whether it holds.</div>
+    <div class="row mt16" style="gap:10px"><button class="btn primary" style="flex:1.5;padding:0 14px" onclick="openAsk()">${ic('sparkle')}Ask again</button><button class="btn ghost" style="flex:1;padding:0 12px" onclick="push('insight')">See insight</button></div>`;return}
+  el.innerHTML=`<div class="row" style="gap:12px"><div class="lockBadge">${ic(ready?'unlock':'lock')}</div><div style="flex:1"><div class="eyebrow" style="color:${ready?'var(--plum)':'var(--ink2)'}">${ready?'Ready for a first look':'Building your baseline'}</div><div class="h3" style="margin-top:2px">${ready?'Enough data to compare across your cycle':'Patterns appear as you log'}</div></div><div class="evPct" id="evPct">${rd.pct}%</div></div>
+  <div class="meter mt12"><i id="evBar" style="width:${rd.pct}%"></i></div>
+  <div class="need"><span class="${rd.days>=14?'done':''}">${ic(rd.days>=14?'check':'bolt')}${Math.min(rd.days,14)} of 14 check-in days</span><span class="${rd.lab?'done':''}">${ic(rd.lab?'check':'flask')}${rd.lab?'Lab result added':'A lab result'}</span><span class="${rd.cyc>=1?'done':''}">${ic(rd.cyc>=1?'check':'cycle')}${rd.cyc>=1?'A full cycle':`Cycle day ${Math.max(1,cd(TODAY))} of ${CYCLE_N}`}</span></div>
+  <button class="btn ${ready?'primary':'ghost'} block mt16" onclick="openAsk()">${ic('sparkle')}${ready?'Ask the agents':'Ask the agents anyway'}</button>`;
+}
 function renderUnlock(){
   const el=$('#unlockCard'),open=S.unlocked;
+  if(isPersonal())return renderUnlockPersonal(el);
   el.classList.toggle('open',open);
   el.innerHTML=`<div class="row" style="gap:12px"><div class="lockBadge">${ic(open?'sparkle':'lock')}</div><div style="flex:1"><div class="eyebrow" style="color:${open?'var(--plum)':'var(--ink2)'}">${open?'Pattern unlocked':'Pattern forming'}</div><div class="h3" style="margin-top:2px">${open?'Your fatigue has a rhythm':'Something about your fatigue…'}</div></div><div class="evPct" id="evPct">${S.evidence}%</div></div>
   <div class="blurText">Your fatigue follows your cycle, and has come more often since ${fmt(MED_DAY)}.</div>
@@ -1030,6 +1126,7 @@ function renderUnlock(){
   :`<div class="small" style="margin-top:12px">Log 2 more things to unlock it:</div><div class="need"><span class="${S.need.energy?'done':''}">${ic(S.need.energy?'check':'bolt')}Today's energy</span><span class="${S.need.sleep?'done':''}">${ic(S.need.sleep?'check':'moon')}Last night's sleep</span></div>`}`;
 }
 function bumpEvidence(key){
+  if(isPersonal())return renderUnlock();
   if(S.unlocked||S.need[key])return;
   S.need[key]=true;S.evidence=Math.min(100,S.evidence+10);
   const bar=$('#evBar');if(bar)bar.style.width=S.evidence+'%';
@@ -1072,15 +1169,16 @@ function saveCheckin(btn){
   if(ex){ex.h=S.sleepH;ex.val=S.sleepH.toFixed(1)+' h'}else addE({id:'SLP-'+md(sd),d:sd,type:'slp',name:'Sleep',h:S.sleepH,val:S.sleepH.toFixed(1)+' h',src:'Daily check-in'});
   const tags=new Set(S.tags);if(S.energy<=1)tags.add('Fatigue');
   tags.forEach(t=>{const id='USR-'+md(TODAY)+'-'+t.replace(/\s/g,''),sev=t==='Fatigue'&&S.energy===0?8:6;if(!E.find(e=>e.id===id))addE({id,d:TODAY,type:'sym',name:t,sev,val:sev+'/10',src:'Daily check-in',note:''})});
-  if(first){xp(35,btn);S.streak++;renderStreak();replay($('#streak'),'pop');questDone('checkin')}
-  buzz(12);renderCheckin();renderRing();renderStats();
+  if(first){xp(35,btn);S.streak++;S.lastCheck=isoOf(TODAY);renderStreak();replay($('#streak'),'pop');questDone('checkin');
+    if(S.streak>=7)earn('streak7');if(S.streak>=30)earn('streak30')}
+  buzz(12);renderCheckin();renderRing();renderStats();saveGame();
   toast(first?`Check-in saved · ${S.streak}-day streak`:'Check-in updated');
   setTimeout(()=>bumpEvidence('energy'),500);setTimeout(()=>bumpEvidence('sleep'),1100);
   if(!S.unlocked&&S.current==='today')setTimeout(()=>$('#unlockCard').scrollIntoView({behavior:'smooth',block:'center'}),250);
   if(API.on){const sv=S.saved=S.saved||{sleep:null,tags:new Set()};(async()=>{     // edits only send what changed
     if(sv.sleep!==S.sleepH){await persist({type:'sleep',name:'Sleep',value:S.sleepH,unit:'h',date:isoOf(TODAY-1),source:'Daily check-in'});sv.sleep=S.sleepH}
     for(const t of tags){if(sv.tags.has(t))continue;const sev=t==='Fatigue'&&S.energy===0?8:6;await persist({type:'symptom',name:t,severity:sev,code:SYMCODE[t]||null,date:isoOf(TODAY),source:'Daily check-in'});sv.tags.add(t)}
-    syncLedger()})()}
+    saveGame();syncLedger()})()}
 }
 
 /* ---------- TODAY: quest & stats ---------- */
@@ -1091,13 +1189,13 @@ function renderQuest(){
   <div class="mt8">${QUEST.map(([k,t,x])=>`<div class="qItem ${S.quest[k]?'ok':''}"><div class="qCheck">${ic('check')}</div><div class="qText">${t}</div><span class="xpTag">${x} XP</span></div>`).join('')}</div>`;
 }
 function questDone(k){
-  if(S.quest[k])return;S.quest[k]=true;renderQuest();
+  if(S.quest[k])return;S.quest[k]=true;renderQuest();saveGame();
   if(k==='timeline'){xp(10);toast('Quest step done · timeline explored')}
   if(QUEST.every(q=>S.quest[q[0]]))setTimeout(()=>{confetti(90,.5,.3);toast("Today's quest complete!",'sparkle');earn('quest')},1600);
 }
 function renderStats(){
   const st=stats();
-  $('#stats').innerHTML=[[91,'days tracked'],[E.length,'data points'],[st.labN,'lab values']].map(([v,l])=>`<div class="stat"><b data-v="${v}">0</b><span>${l}</span></div>`).join('');
+  $('#stats').innerHTML=[[isPersonal()?new Set(E.map(e=>e.d)).size:91,'days tracked'],[E.length,'data points'],[st.labN,'lab values']].map(([v,l])=>`<div class="stat"><b data-v="${v}">0</b><span>${l}</span></div>`).join('');
   $$('#stats b').forEach(b=>countUp(b,+b.dataset.v,1100));
 }
 function renderTodayDynamic(){renderUnlock();renderQuest();renderAvatar();renderStreak();renderRing()}
@@ -1107,6 +1205,7 @@ const LANE_H={cyc:30,lab:38,sym:48,slp:48,med:32};
 const evLabel=e=>e.type==='sym'?`${e.name} ${e.sev}/10`:e.type==='lab'?`${e.name} ${e.v} ${e.u}`:e.type==='slp'?`Sleep ${fmtH(e.h)}`:e.name;
 const barP=(x,y,w,h,r)=>{r=Math.min(r,w/2,h);return`M${x.toFixed(1)} ${(y+h).toFixed(1)}V${(y+r).toFixed(1)}Q${x.toFixed(1)} ${y.toFixed(1)} ${(x+r).toFixed(1)} ${y.toFixed(1)}H${(x+w-r).toFixed(1)}Q${(x+w).toFixed(1)} ${y.toFixed(1)} ${(x+w).toFixed(1)} ${(y+r).toFixed(1)}V${(y+h).toFixed(1)}Z`};
 function renderTimeline(){
+  $('#s-timeline .hdr .eyebrow').textContent=`${fmt(0)} – ${fmt(TODAY)} · all sources`;
   $('#tlFilters').innerHTML=`<div class="seg2" id="rangeSeg">${[30,90].map(r=>`<button class="${S.range===r?'on':''}" data-r="${r}">${r} days</button>`).join('')}</div>`+
     ORDER.map(k=>`<button class="chip ${S.lanes.has(k)?'sel':'off'}" data-k="${k}"><span class="sw" style="background:${T[k].hex}"></span>${T[k].name}</button>`).join('');
   $$('#rangeSeg button').forEach(b=>b.onclick=()=>{S.range=+b.dataset.r;buzz(5);renderTimeline()});
@@ -1121,13 +1220,13 @@ function renderLanes(){
   lanes.forEach(k=>{rows[k]={y,h:LANE_H[k]};y+=LANE_H[k]});
   const H=y+22,inR=e=>e.d>=d0&&e.d<=TODAY;
   let s=`<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" id="laneSvg" role="img" aria-label="Timeline of labs, symptoms, cycle, sleep and medication">`;
-  STARTS.forEach(st=>{const a=Math.max(d0,st+19),b=Math.min(TODAY,st+27);if(b<a)return;
+  STARTS.forEach((st,i)=>{const a=Math.max(d0,st+CYCLE_N-9),b=Math.min(TODAY,st+CYCLE_N-1,i+1<STARTS.length?STARTS[i+1]-1:Infinity);if(b<a)return;
     s+=`<rect x="${(x(a)-dw/2).toFixed(1)}" y="${TOP}" width="${((b-a+1)*dw).toFixed(1)}" height="${y-TOP}" fill="#9a6bc0" fill-opacity=".11" rx="4"/>`;
     if(b-a>=6)s+=`<text class="axisTxt" x="${(x(a)-dw/2+3).toFixed(1)}" y="14">late luteal</text>`});
   lanes.forEach((k,i)=>{if(i)s+=`<line x1="0" x2="${W}" y1="${rows[k].y}" y2="${rows[k].y}" stroke="rgba(30,26,34,.06)"/>`});
   lanes.forEach(k=>{const{y:ry,h:rh}=rows[k],cy=ry+rh/2;
     if(k==='cyc')STARTS.forEach(st=>{for(let c=1;c<=5;c++){const d=st+c-1;if(d<d0||d>TODAY)continue;s+=`<rect x="${(x(d)-dw/2+1).toFixed(1)}" y="${cy-6}" width="${(dw-2).toFixed(1)}" height="12" rx="3" fill="#9a6bc0"/>`}
-      const ov=st+13;if(ov>=d0&&ov<=TODAY)s+=`<circle cx="${x(ov).toFixed(1)}" cy="${cy}" r="4" fill="none" stroke="#9a6bc0" stroke-width="2"/>`});
+      const ov=st+CYCLE_N-15;if(ov>=d0&&ov<=TODAY)s+=`<circle cx="${x(ov).toFixed(1)}" cy="${cy}" r="4" fill="none" stroke="#9a6bc0" stroke-width="2"/>`});
     if(k==='lab'){const days={};E.filter(e=>e.type==='lab'&&inR(e)).forEach(e=>(days[e.d]=days[e.d]||[]).push(e.code||e.name));
       Object.entries(days).forEach(([d,codes])=>{s+=`<circle cx="${x(+d).toFixed(1)}" cy="${cy-5}" r="5.5" fill="#16917f" stroke="#FFFDF9" stroke-width="2"/><text class="axisTxt" x="${x(+d).toFixed(1)}" y="${cy+14}" text-anchor="middle">${esc(codes.slice(0,2).join('·'))}</text>`})}
     if(k==='sym'){const days={};E.filter(e=>e.type==='sym'&&inR(e)).forEach(e=>(days[e.d]=days[e.d]||[]).push(e));
@@ -1155,34 +1254,44 @@ function renderLanes(){
   requestAnimationFrame(()=>{sc.scrollLeft=sc.scrollWidth});
 }
 function readout(d){
-  const c=cd(d),ev=E.filter(e=>e.d===d).sort((a,b)=>ORDER.indexOf(a.type)-ORDER.indexOf(b.type));
-  $('#readout').innerHTML=`<div class="roHead"><b>${fmt(d)}</b> · Cycle day ${c} · ${phase(c)}${d===TODAY?' · Today':''}</div><div class="roItems">${ev.length?ev.map(e=>`<button class="roItem" onclick="openEvent('${e.id}')"><span class="d" style="background:${T[e.type].hex}">${ic(T[e.type].icon)}</span>${esc(evLabel(e))}</button>`).join(''):'<span class="small">Nothing logged this day. Tap another day on the timeline.</span>'}</div>`;
+  const ev=E.filter(e=>e.d===d).sort((a,b)=>ORDER.indexOf(a.type)-ORDER.indexOf(b.type));
+  $('#readout').innerHTML=`<div class="roHead"><b>${fmt(d)}</b> · ${cycLbl(d)}${d===TODAY?' · Today':''}</div><div class="roItems">${ev.length?ev.map(e=>`<button class="roItem" onclick="openEvent('${e.id}')"><span class="d" style="background:${T[e.type].hex}">${ic(T[e.type].icon)}</span>${esc(evLabel(e))}</button>`).join(''):'<span class="small">Nothing logged this day. Tap another day on the timeline.</span>'}</div>`;
 }
 function nice(lo,hi,n=3){const span=hi-lo||1,s0=span/(n-1),mag=Math.pow(10,Math.floor(Math.log10(s0))),f=s0/mag,step=(f<1.5?1:f<3?2:f<7?5:10)*mag;const a=Math.floor(lo/step)*step,b=Math.ceil(hi/step)*step,out=[];for(let v=a;v<=b+1e-9;v+=step)out.push(+v.toFixed(6));return out}
 const HORM=[['E2','Estradiol','pg/mL'],['P4','Progesterone','ng/mL'],['TSH','TSH','mIU/L']];
+const labKey=e=>e.code||e.name;
+function hormSeries(labs){   // the usual hormones first, then every other test that appears in the record
+  const seen=[...new Set(labs.map(labKey))];
+  return[...HORM.map(h=>h[0]).filter(c=>seen.includes(c)),...seen.filter(c=>!HORM.some(h=>h[0]===c))].map(code=>{
+    const h=HORM.find(x=>x[0]===code),p=labs.filter(e=>labKey(e)===code);return[code,h?h[1]:p[0].name,p[p.length-1].u||(h?h[2]:'')]});
+}
+const dayTxt=d=>cd(d)<1?'':` · day ${cd(d)}`;
 function renderHormones(){
   const view=S.hview||'chart';
   $$('#hormoneView button').forEach(b=>{b.classList.toggle('on',b.dataset.v===view);b.onclick=()=>{S.hview=b.dataset.v;buzz(4);renderHormones()}});
   const labs=E.filter(e=>e.type==='lab').sort((a,b)=>a.d-b.d);
-  if(view==='table'){$('#hormones').innerHTML=`<table class="tbl"><thead><tr><th>Date</th><th>Day</th><th>Test</th><th style="text-align:right">Value</th></tr></thead><tbody>${labs.map(e=>`<tr><td>${fmt(e.d)}</td><td>${cd(e.d)}</td><td>${esc(e.name)}</td><td style="text-align:right">${e.v} ${esc(e.u)}</td></tr>`).join('')}</tbody></table>`;return}
-  $('#hormones').innerHTML=HORM.map(([code,name,u])=>{
-    const p=labs.filter(e=>e.code===code);if(!p.length)return'';
+  if(!labs.length){$('#hormones').innerHTML=`<div class="small">No lab results in the last 90 days yet. Add a lab value with <b style="color:var(--ink)">+</b> and every value shows up here with its date and cycle day.</div>`;return}
+  if(view==='table'){$('#hormones').innerHTML=`<table class="tbl"><thead><tr><th>Date</th><th>Day</th><th>Test</th><th style="text-align:right">Value</th></tr></thead><tbody>${labs.map(e=>`<tr><td>${fmt(e.d)}</td><td>${cd(e.d)<1?'—':cd(e.d)}</td><td>${esc(e.name)}</td><td style="text-align:right">${e.v} ${esc(e.u)}</td></tr>`).join('')}</tbody></table>`;return}
+  const months=[];for(let d=0;d<=TODAY;d++){const dt=dateOf(d);if(dt.getDate()===1||(d===0&&dt.getDate()<=20))months.push([d,MON[dt.getMonth()]])}
+  const ml=CYCLE_N-7;   // mid-luteal day (day 21 of a 28-day cycle): where progesterone is usually compared
+  $('#hormones').innerHTML=hormSeries(labs).map(([code,name,u])=>{
+    const p=labs.filter(e=>labKey(e)===code);if(!p.length)return'';
     const W=320,H=88,L=34,Rr=10,Tp=8,B=18,vs=p.map(e=>e.v),tk=nice(Math.min(...vs)*.85,Math.max(...vs)*1.1),lo=tk[0],hi=tk[tk.length-1];
     const X=d=>L+(d/TODAY)*(W-L-Rr),Y=v=>Tp+(1-(v-lo)/(hi-lo))*(H-Tp-B);
     let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${name} over 90 days">`;
     tk.forEach(v=>s+=`<line x1="${L}" x2="${W-Rr}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}" stroke="rgba(30,26,34,.07)"/><text class="axisTxt" x="${L-6}" y="${(Y(v)+3.5).toFixed(1)}" text-anchor="end" style="font-variant-numeric:tabular-nums">${v}</text>`);
-    [[0,'Jul'],[31,'Aug'],[62,'Sep']].forEach(([d,m])=>s+=`<text class="axisTxt" x="${X(d).toFixed(1)}" y="${H-3}">${m}</text>`);
+    months.forEach(([d,m])=>s+=`<text class="axisTxt" x="${X(d).toFixed(1)}" y="${H-3}">${m}</text>`);
     s+=`<path d="${p.map((e,i)=>(i?'L':'M')+X(e.d).toFixed(1)+' '+Y(e.v).toFixed(1)).join('')}" fill="none" stroke="#16917f" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
     p.forEach(e=>s+=`<circle cx="${X(e.d).toFixed(1)}" cy="${Y(e.v).toFixed(1)}" r="4.5" fill="#16917f" stroke="#FFFDF9" stroke-width="2"/><circle class="hit" data-id="${e.id}" cx="${X(e.d).toFixed(1)}" cy="${Y(e.v).toFixed(1)}" r="14" fill="transparent" style="cursor:pointer"/>`);
-    const last=p[p.length-1],d21=p.filter(e=>cd(e.d)===21);
-    const ro=d21.length>=2?`Day-21 samples: ${d21[0].v} → ${d21[d21.length-1].v} ${u}`:`${p[0].v} → ${last.v} ${u} since ${fmt(p[0].d)}${code==='TSH'?' · stable':''}`;
+    const last=p[p.length-1],d21=p.filter(e=>cd(e.d)===ml),stable=Math.abs(last.v-p[0].v)<=Math.abs(p[0].v)*.1;
+    const ro=d21.length>=2?`Day-${ml} samples: ${d21[0].v} → ${d21[d21.length-1].v} ${u}`:p.length<2?`Measured ${fmt(p[0].d)}${dayTxt(p[0].d).replace(' · day',' · cycle day')}`:`${p[0].v} → ${last.v} ${u} since ${fmt(p[0].d)}${stable?' · stable':''}`;
     return`<div class="mini"><div class="top"><div class="h3">${name}</div><div class="val">${last.v}<small>${u}</small></div></div>${s}</svg><div class="ro">${ro}</div></div>`}).join('');
-  $$('#hormones .hit').forEach(c=>{const f=()=>{const e=E.find(x=>x.id===c.dataset.id);c.closest('.mini').querySelector('.ro').innerHTML=`<b>${fmt(e.d)}</b> · cycle day ${cd(e.d)} · <b>${e.v} ${esc(e.u)}</b> <button style="color:var(--plum);font-weight:600" onclick="openEvent('${e.id}')">details →</button>`};c.addEventListener('pointerenter',f);c.addEventListener('click',f)});
+  $$('#hormones .hit').forEach(c=>{const f=()=>{const e=E.find(x=>x.id===c.dataset.id);c.closest('.mini').querySelector('.ro').innerHTML=`<b>${fmt(e.d)}</b>${dayTxt(e.d).replace(' · day',' · cycle day')} · <b>${e.v} ${esc(e.u)}</b> <button style="color:var(--plum);font-weight:600" onclick="openEvent('${e.id}')">details →</button>`};c.addEventListener('pointerenter',f);c.addEventListener('click',f)});
 }
 function renderFeed(){
   const l=E.filter(e=>S.lanes.has(e.type)&&(S.range===90||e.d>=TODAY-29)).sort((a,b)=>b.d-a.d||ORDER.indexOf(a.type)-ORDER.indexOf(b.type));
   $('#feedCount').textContent=l.length+' records';
-  $('#feed').innerHTML=l.slice(0,S.feedN).map((e,i)=>`<div class="feedItem" onclick="openEvent('${e.id}')" style="animation-delay:${Math.min(i,10)*30}ms"><div class="bub" style="background:${T[e.type].hex}">${ic(T[e.type].icon)}</div><div><div class="t">${esc(evLabel(e))}</div><div class="m">${fmt(e.d)} · day ${cd(e.d)} · ${esc(e.src)}</div></div>${ic('chev','width:18px;height:18px;color:var(--faint)')}</div>`).join('');
+  $('#feed').innerHTML=l.slice(0,S.feedN).map((e,i)=>`<div class="feedItem" onclick="openEvent('${e.id}')" style="animation-delay:${Math.min(i,10)*30}ms"><div class="bub" style="background:${T[e.type].hex}">${ic(T[e.type].icon)}</div><div><div class="t">${esc(evLabel(e))}</div><div class="m">${fmt(e.d)}${dayTxt(e.d)} · ${esc(e.src)}</div></div>${ic('chev','width:18px;height:18px;color:var(--faint)')}</div>`).join('');
   const more=$('#feedMore');more.style.display=l.length>S.feedN?'':'none';more.onclick=()=>{S.feedN+=15;renderFeed()};
 }
 
@@ -1190,13 +1299,13 @@ function renderFeed(){
 function openEvent(id){
   const e=E.find(x=>x.id===id);if(!e)return;const c=cd(e.d),t=T[e.type];
   const H=(S.analysis&&S.analysis.hypotheses)||(S.liveRun&&S.liveRun.hyps);
-  const used=H?AG.filter(a=>{const h=H[AG_OUT[a.k]]||H[a.k];return h&&(h.evidence_ids||[]).includes(id)}):agentDefs(stats()).filter(a=>a.ev.includes(id));
+  const used=H?AG.filter(a=>{const h=H[AG_OUT[a.k]]||H[a.k];return h&&(h.evidence_ids||[]).includes(id)}):isPersonal()?[]:agentDefs(stats()).filter(a=>a.ev.includes(id));
   const sm=s=>`<small style="font-size:16px;color:var(--muted);font-weight:500"> ${s}</small>`;
   const big=e.type==='lab'?`${e.v}${sm(esc(e.u))}`:e.type==='sym'?`${e.sev}${sm('/ 10')}`:e.type==='slp'?fmtH(e.h):esc(e.val);
   openSheet(`<div class="row" style="gap:14px"><div class="bub" style="width:56px;height:56px;border-radius:19px;background:${t.hex}">${ic(t.icon)}</div><div><div class="eyebrow">${t.label}</div><div class="h2">${esc(e.name)}</div></div></div>
   <div style="font-size:42px;font-weight:300;margin:14px 0 4px;letter-spacing:-.03em">${big}</div>
   ${e.note?`<div class="note" style="margin-top:10px">${ic('doc')}<div>${esc(e.note)}</div></div>`:''}
-  <div class="kv"><div><span>Date</span><b>${fmt(e.d)}, 2026</b></div><div><span>Cycle</span><b>Day ${c} · ${phase(c)}</b></div><div><span>Source</span><b>${esc(e.src)}</b></div><div><span>Record ID</span><b style="font-family:ui-monospace,Menlo,monospace;font-size:13px">${esc(e.id)}</b></div></div>
+  <div class="kv"><div><span>Date</span><b>${fmt(e.d)}, ${dateOf(e.d).getFullYear()}</b></div><div><span>Cycle</span><b>${c<1?'Before first logged period':`Day ${c} · ${phase(c)}`}</b></div><div><span>Source</span><b>${esc(e.src)}</b></div><div><span>Record ID</span><b style="font-family:ui-monospace,Menlo,monospace;font-size:13px">${esc(e.id)}</b></div></div>
   <div class="eyebrow" style="margin:18px 0 8px">Cited as evidence by</div>
   <div class="evChips" style="margin:0">${used.length?used.map(a=>`<span class="evChip"><span class="sw" style="background:${T[a.k].hex}"></span>${a.name}</span>`).join(''):'<span class="small">Not cited by an agent yet. It still counts toward pattern strength.</span>'}</div>
   <button class="btn ghost block mt16" onclick="closeSheet()">Done</button>`);
@@ -1220,7 +1329,7 @@ function logForm(k){
   if(k==='cyc'){S.lf={name:'Spotting'};swapSheet(head('Any bleeding today?','Cycle')+`<div class="chips mt16">${['Spotting','Light flow','Medium flow','Heavy flow'].map((t,i)=>`<button class="chip ${i?'':'sel'}" onclick="lfSel(this,'${t}')">${t}</button>`).join('')}</div><p class="small mt12">Hormony uses this to refine your cycle-phase estimate.</p><button class="btn primary block mt16" onclick="saveLog('cyc',this)">Add to timeline · +10 XP</button>`)}
   if(k==='lab'){S.lf={i:0};swapSheet(head('Add a lab value','Lab result')+`<div class="chips mt16">${ANALYTES.map((a,i)=>`<button class="chip ${i?'':'sel'}" onclick="lfAn(this,${i})">${a[0]}</button>`).join('')}</div><div class="field"><label id="lfUnit">Value · ${ANALYTES[0][2]}</label><input class="inp" id="lfVal" type="number" inputmode="decimal" step="any" placeholder="e.g. ${ANALYTES[0][3]}"></div><button class="btn primary block mt16" onclick="saveLog('lab',this)">Add to timeline · +25 XP</button>`)}
   if(k==='med'){S.lf={chg:'Started'};swapSheet(head('Medication change','Medication')+`<div class="field"><label>Medication</label><input class="inp" id="lfMed" placeholder="e.g. Vitamin D 1000 IU" maxlength="60"></div><div class="chips mt12">${['Started','Stopped','Dose change','Timing change'].map((t,i)=>`<button class="chip ${i?'':'sel'}" onclick="lfSel(this,'${t}','chg')">${t}</button>`).join('')}</div><button class="btn primary block mt16" onclick="saveLog('med',this)">Add to timeline · +10 XP</button>`)}
-  if(k==='scan')scanFlow();
+  if(k==='scan')isPersonal()?logForm('lab'):scanFlow();   // the scripted scan is demo-only: never add made-up values to a real record
 }
 function swapSheetLog(){S.scanRun++;const b=$('#sheet .sheetBody');if(b)b.remove();openLog()}
 function lfPick(b,t){$$('#lfChips .chip').forEach(c=>c.classList.remove('on'));b.classList.add('on');S.lf.name=t;buzz(4)}
@@ -1234,7 +1343,7 @@ function saveLog(k,btn){
     if(ex){ex.h=S.lf.h;ex.val=S.lf.h.toFixed(1)+' h';ex.src='Manual entry'}else e={type:'slp',name:'Sleep',h:S.lf.h,val:S.lf.h.toFixed(1)+' h',d:sd}}
   if(k==='cyc')e={type:'cyc',name:S.lf.name,val:'Cycle day '+cd(TODAY)};
   if(k==='lab'){const a=ANALYTES[S.lf.i],v=parseFloat($('#lfVal').value);if(!(v>0)){toast('Enter a value first','help');$('#lfVal').focus();return}
-    gain=25;e={type:'lab',name:a[0],code:a[1],v,u:a[2],val:v+' '+a[2]}}
+    gain=25;e={type:'lab',name:a[0],code:a[1],v,u:a[2],val:v+' '+a[2]};earn('lab')}
   if(k==='med'){const n=$('#lfMed').value.trim();if(!n){toast('Add the medication name','help');$('#lfMed').focus();return}e={type:'med',name:n,val:S.lf.chg}}
   if(e){e.id=`USR-${md(TODAY)}-${++uidN}`;if(e.d===undefined)e.d=TODAY;e.src='Manual entry';e.note=e.note||'';addE(e)}
   if(API.on){const body=k==='sym'?{type:'symptom',name:S.lf.name,severity:S.lf.sev,code:SYMCODE[S.lf.name]||null}
@@ -1269,18 +1378,36 @@ function saveScan(){
   if(API.on)Promise.all(S.scanVals.map(([name,code,v,u])=>persist({type:'lab',name,code,value:v,unit:u,date:isoOf(TODAY),source:'Scanned lab report'}))).then(syncLedger);
   closeSheet();xp(40);confetti(90,.5,.5);toast('3 lab values added');earn('scan');afterData();
 }
-function afterData(){renderRing();renderStats();if(S.current==='timeline')renderTimeline()}
+/* ---------- names of the models a profile's data goes to ---------- */
+function engineLabel(id){
+  if(!id||/^misconfigured/.test(id))return null;if(id==='demo')return'the built-in rules engine';
+  const[prov,...r]=String(id).split(':'),m=r.join(':');return prov==='openrouter'?`${m} via OpenRouter`:prov==='anthropic'?`${m} (Anthropic)`:m||prov;
+}
+function afterData(){renderRing();renderStats();if(isPersonal())renderUnlock();if(S.current==='timeline')renderTimeline()}
 
 /* ---------- ASK ---------- */
 const SUGS=['Why have my fatigue episodes increased over the last two cycles?','Is my sleep changing with my cycle?','What changed after I started spironolactone?'];
+const SUG_L=['Fatigue','Sleep × cycle','Medication'];
+function sugs(){
+  if(!isPersonal())return SUGS.map((q,i)=>[SUG_L[i],q]);
+  const cnt={};E.filter(e=>e.type==='sym').forEach(e=>cnt[e.name]=(cnt[e.name]||0)+1);
+  const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0],med=E.filter(e=>e.type==='med').sort((a,b)=>a.d-b.d)[0],out=[];
+  if(top)out.push([top[0],`Is my ${top[0].toLowerCase()} linked to my cycle?`]);
+  if(E.filter(e=>e.type==='slp').length>=5)out.push(['Sleep × cycle','Is my sleep changing with my cycle?']);
+  if(med)out.push(['Medication',`Has anything changed since I started ${med.name}?`]);
+  if(E.some(e=>e.type==='lab'))out.push(['Labs','What do my lab results show over time?']);
+  if(!out.length)out.push(['First look','What can you see in my records so far?']);
+  return out.slice(0,3);
+}
 function openAsk(q){
+  const sg=S.sugs=sugs();
   openSheet(`<div class="eyebrow">Ask Hormony</div><div class="h2" style="margin-top:4px">What do you want to <em>understand?</em></div>
-  <textarea class="askBox" id="askQ" rows="3" maxlength="200">${esc(q||SUGS[0])}</textarea>
-  <div class="chips">${['Fatigue','Sleep × cycle','Medication'].map((l,i)=>`<button class="chip" onclick="$('#askQ').value=SUGS[${i}];buzz(4)">${l}</button>`).join('')}</div>
+  <textarea class="askBox" id="askQ" rows="3" maxlength="200">${esc(q||sg[0][1])}</textarea>
+  <div class="chips">${sg.map(([l],i)=>`<button class="chip" onclick="$('#askQ').value=S.sugs[${i}][1];buzz(4)">${esc(l)}</button>`).join('')}</div>
   <div class="card mt16" style="margin-bottom:0;padding:14px"><div class="row" style="gap:6px">${AG.map(a=>agAv(a,34)).join('')}<div class="small" style="margin-left:6px">Three specialists analyze <b style="color:var(--ink)">independently</b>, then a Critic reviews where they disagree.</div></div></div>
   <button class="btn primary block mt16" onclick="startDebate($('#askQ').value)">${ic('sparkle')}Start analysis</button>`);
 }
-function askDefault(){startDebate(SUGS[0])}
+function askDefault(){startDebate(sugs()[0][1])}
 
 /* ---------- DEBATE: independent agents → discordance → debate → critic ---------- */
 let runId=0;
@@ -1376,7 +1503,7 @@ function discordanceLiveHTML(evt){
   }
   return`<div class="card disc"><div class="discHead">${ic('alert')}${conflict?'Discordance detected':'Partial agreement'}</div>
   <div class="h3 mt8">${act.length} agents · ${conflict?`${distinct} different leading explanations`:'compatible explanations'}</div>${tri}
-  <div class="pair"><span class="tag all">${ic('check','width:13px;height:13px')}${act.length}/${act.length} agree</span><div>Fatigue increased over the last two cycles.</div></div>
+  <div class="pair"><span class="tag all">${ic('check','width:13px;height:13px')}${act.length}/${act.length} agree</span><div>${conflict?'They read the same records. They differ on what explains them.':'Their explanations fit together.'}</div></div>
   ${pairs.map(p=>`<div class="pair"><span class="tag ${p.rel==='conflict'?'no':'ok'}">${ic(p.rel==='conflict'?'alert':'check','width:13px;height:13px')}${cap(p.rel||'')}</span><div><b>${SHORT[p.a]} × ${SHORT[p.b]}</b><br><span class="small">${esc(p.note||pairNote(p.a,p.b,p.rel))}</span></div></div>`).join('')}
   <p class="small mt8" style="margin-bottom:0">Instead of averaging the answers, Hormony sends the disagreement to a debate and a critic.</p></div>`;
 }
@@ -1401,10 +1528,10 @@ function liveHyp(k,h){
 }
 function debateFailed(q,err){
   S.lastQ=q;$('#skipBtn').style.visibility='hidden';$('#stepLbl').textContent='Analysis interrupted';
-  $('#debateBody').insertAdjacentHTML('beforeend',`<div class="card disc" style="animation:none"><div class="discHead">${ic('alert')}Live analysis unavailable</div><p class="p mt8">${esc(String((err&&err.message)||err||'Unknown error').slice(0,180))}</p><div class="row mt12" style="gap:10px"><button class="btn primary" style="flex:1;padding:0 12px" onclick="startDebate(S.lastQ)">Try again</button><button class="btn ghost" style="flex:1;padding:0 12px" onclick="startDebateDemo(S.lastQ)">Watch demo</button></div></div>`);
+  $('#debateBody').insertAdjacentHTML('beforeend',`<div class="card disc" style="animation:none"><div class="discHead">${ic('alert')}Live analysis unavailable</div><p class="p mt8">${esc(String((err&&err.message)||err||'Unknown error').slice(0,180))}</p><div class="row mt12" style="gap:10px"><button class="btn primary" style="flex:1;padding:0 12px" onclick="startDebate(S.lastQ)">Try again</button>${isPersonal()?'':`<button class="btn ghost" style="flex:1;padding:0 12px" onclick="startDebateDemo(S.lastQ)">Watch demo</button>`}</div></div>`);
 }
 async function startDebateLive(q){
-  q=(q||'').trim()||SUGS[0];
+  q=(q||'').trim()||sugs()[0][1];
   S.fast=false;go('debate');
   const my=++runId,alive=()=>my===runId;
   const w=ms=>sleep(S.fast||RM?Math.min(ms,25):ms);
@@ -1442,7 +1569,8 @@ async function startDebateLive(q){
       [['cyc','cycle'],['lab','lab'],['sym','symptom'],['slp','sleep'],['med','med']].forEach(([lk,ak])=>{const n=+c[ak]||0;tot+=n;const b=$('#lg-'+lk);if(b){b.dataset.v=n;countUp(b,n,S.fast?10:1200)}});
       await w(1300);if(!alive())return;
       $('#scopeMsg').innerHTML=`<b style="color:var(--ink)">${tot} records scoped.</b> Each agent sees only the data types it's allowed to read.`;await w(500)}
-    else if(evt.type==='thought'){showCards();const card=$('#ag-'+k);if(!card||S.paused.has(k))continue;   // never show a paused agent's factscard.classList.add('live');$('#st-'+k).textContent='Thinking';
+    else if(evt.type==='thought'){showCards();const card=$('#ag-'+k);if(!card||S.paused.has(k))continue;   // never show a paused agent's facts
+      card.classList.add('live');$('#st-'+k).textContent='Thinking';
       const el=document.createElement('div');el.className='thought';$('#th-'+k).appendChild(el);await typeInto(el,evt.text||'',alive);await w(160);follow()}
     else if(evt.type==='hypothesis'){showCards();S.liveRun.hyps[k]=evt;liveHyp(k,evt);follow();await w(450)}
     else if(evt.type==='agent_skipped'){showCards();const card=$('#ag-'+k);
@@ -1468,8 +1596,10 @@ async function startDebateLive(q){
       try{S.analysis=Object.assign({id},await API.get(`/analyses/${encodeURIComponent(id)}`));G=null}catch(err){}
       skip.style.visibility='hidden';$('#stepLbl').textContent='Analysis complete · uncertainty preserved';
       if(!S.liveRun.verdict)body.insertAdjacentHTML('beforeend',`<button class="btn gold block mt16" onclick="revealInsight()">${ic('sparkle')}Reveal your insight</button>`);
-      const firstRun=!S.debated;S.debated=true;questDone('ask');earn('debate');
+      const firstRun=!S.debated;S.debated=true;S.lastAnalysis=id;S.analyses=(S.analyses||0)+1;questDone('ask');earn('debate');
+      if(S.analyses>=3)earn('three');
       if(!S.unlocked){S.unlocked=true;S.evidence=100;S.need={energy:true,sleep:true};earn('pattern')}
+      saveGame();
       if(firstRun)setTimeout(()=>{confetti(130,.5,.55);xp(50)},350);
       return}
     else if(evt.type==='error'){finished=true;return debateFailed(q,new Error(evt.message||'Analysis failed'))}
@@ -1544,16 +1674,25 @@ function revealInsight(){S.back='insights';go('insight');setTimeout(()=>confetti
 /* ---------- INSIGHT + "Why?" ---------- */
 function confRing(p){const r=32,c=2*Math.PI*r;return`<div style="position:relative;width:76px;height:76px;flex:none"><svg viewBox="0 0 76 76"><circle cx="38" cy="38" r="${r}" fill="none" stroke="rgba(30,26,34,.12)" stroke-width="8"/><circle class="cr" cx="38" cy="38" r="${r}" fill="none" stroke="url(#brandG)" stroke-width="8" stroke-linecap="round" stroke-dasharray="${c.toFixed(1)}" stroke-dashoffset="${c.toFixed(1)}" data-off="${(c*(1-p)).toFixed(1)}" style="transition:stroke-dashoffset 1.4s var(--ease)"/></svg><div style="position:absolute;inset:0;display:grid;place-items:center;font-weight:500;font-size:17px">${Math.round(p*100)}%</div></div>`}
 const emph=t=>esc(t).replace(/\bcycle\b/,'<em>cycle</em>');
+const lname=t=>String(t).toLowerCase();
+const focusOf=()=>{const F=S.analysis&&S.analysis.stats&&S.analysis.stats.focus;return F&&F.name?F:null};
+function renderInsightEmpty(){
+  $('#s-insight').innerHTML=`<div class="hdr"><button class="backBtn" onclick="go(S.back&&S.back!=='insight'?S.back:'insights')" aria-label="Back">${ic('back')}</button><div style="flex:1"><div class="eyebrow">Insight</div><div class="h3">Nothing to show yet</div></div></div>
+  <div class="card iriCard"><div class="lockBadge">${ic('sparkle')}</div><div class="h2 mt12">Ask your first <em>question</em></div><p class="p mt8">Three specialist agents read your records independently, a critic checks where they disagree, and the result lands here with every piece of evidence linked.</p><button class="btn primary block mt16" onclick="openAsk()">${ic('sparkle')}Ask the agents</button></div>`;
+}
 function renderInsight(){
   const st=stats(),R=S.analysis&&S.analysis.report;
+  if(isPersonal()&&!R)return renderInsightEmpty();
+  const F=focusOf(),fn=F?F.name:'Fatigue',cyc=STARTS.filter(x=>x<=TODAY).length,medE=E.filter(e=>e.type==='med').sort((a,b)=>a.d-b.d)[0];
+  const split=!R||!!(S.analysis.discordance&&S.analysis.discordance.conflict);
   const defs=agentDefs(st).map(a=>{const v=R&&(R.agent_views||[]).find(x=>AG_IN[x.agent]===a.k);return R?Object.assign({},a,{adj:v&&v.claim?+v.after:null}):a});
-  $('#s-insight').innerHTML=`<div class="hdr"><button class="backBtn" onclick="go(S.back&&S.back!=='insight'?S.back:'insights')" aria-label="Back">${ic('back')}</button><div style="flex:1"><div class="eyebrow">Pattern unlocked · ${fmt(TODAY)}</div><div class="h3">Fatigue × cycle × medication</div></div><button class="backBtn" onclick="toast('Pinned to your insights','sparkle')" aria-label="Pin insight">${ic('sparkle')}</button></div>
-  <div class="card ihero iriCard"><div class="row" style="gap:6px;flex-wrap:wrap"><span class="pill"><span class="sw" style="background:#c4614f"></span>${st.fatN} fatigue logs</span><span class="pill"><span class="sw" style="background:#9a6bc0"></span>4 cycles</span><span class="pill"><span class="sw" style="background:#b08433"></span>${st.medN} med change${st.medN>1?'s':''}</span></div>
+  $('#s-insight').innerHTML=`<div class="hdr"><button class="backBtn" onclick="go(S.back&&S.back!=='insight'?S.back:'insights')" aria-label="Back">${ic('back')}</button><div style="flex:1"><div class="eyebrow">Pattern unlocked · ${fmt(TODAY)}</div><div class="h3">${R?`${esc(fn)} × cycle${medE?' × medication':''}`:'Fatigue × cycle × medication'}</div></div><button class="backBtn" onclick="toast('Pinned to your insights','sparkle')" aria-label="Pin insight">${ic('sparkle')}</button></div>
+  <div class="card ihero iriCard"><div class="row" style="gap:6px;flex-wrap:wrap"><span class="pill"><span class="sw" style="background:#c4614f"></span>${F?F.n:st.fatN} ${esc(lname(fn))} logs</span><span class="pill"><span class="sw" style="background:#9a6bc0"></span>${cyc} cycle${cyc===1?'':'s'}</span>${st.medN?`<span class="pill"><span class="sw" style="background:#b08433"></span>${st.medN} med change${st.medN>1?'s':''}</span>`:''}</div>
     <div class="big">${R&&R.headline?emph(R.headline):`Your fatigue follows your <em>cycle</em>, and has come more often since ${fmt(MED_DAY)}.`}</div>
-    <div class="confRing">${confRing(R?(+R.confidence||0):.68)}<div><b>${R?esc(R.confidence_word||''):'Medium'} confidence</b><div class="lbl">A time-based link, not proof of cause. The agents disagreed on the main factor.</div></div></div></div>
-  <div class="card"><div class="row between" style="align-items:flex-start"><div><div class="h3">Fatigue by cycle day</div><div class="small">One row per cycle · dot size = severity</div></div><div class="seg2" id="dpView"><button class="${S.dpv==='table'?'':'on'}" data-v="chart">Chart</button><button class="${S.dpv==='table'?'on':''}" data-v="table">Table</button></div></div>
+    <div class="confRing">${confRing(R?(+R.confidence||0):.68)}<div><b>${R?esc(R.confidence_word||''):'Medium'} confidence</b><div class="lbl">A time-based link, not proof of cause.${split?' The agents disagreed on the main factor.':''}</div></div></div></div>
+  <div class="card"><div class="row between" style="align-items:flex-start"><div><div class="h3">${esc(fn)} by cycle day</div><div class="small">One row per cycle · dot size = severity</div></div><div class="seg2" id="dpView"><button class="${S.dpv==='table'?'':'on'}" data-v="chart">Chart</button><button class="${S.dpv==='table'?'on':''}" data-v="table">Table</button></div></div>
     <div id="dotplot" class="mt12"></div>
-    <div class="legend" style="justify-content:flex-start;margin-top:10px"><span><i style="background:#c4614f"></i>Fatigue log</span><span><i class="bar" style="background:#b08433;width:4px;height:12px"></i>Spironolactone start</span><span><i class="bar" style="background:rgba(154,107,192,.3);width:14px;height:10px"></i>Days 20–28</span></div></div>
+    <div class="legend" style="justify-content:flex-start;margin-top:10px"><span><i style="background:#c4614f"></i>${esc(fn)} log</span>${medE?`<span><i class="bar" style="background:#b08433;width:4px;height:12px"></i>${esc(medE.name.split(' ')[0])} start</span>`:''}<span><i class="bar" style="background:rgba(154,107,192,.3);width:14px;height:10px"></i>Days ${lateTxt()}</span></div></div>
   <button class="btn primary block whyBtn" id="whyBtn" onclick="showWhy()">${ic('help')}Why? Show me the evidence</button>
   <div class="card mt16" id="whyCard" style="display:none"><div class="chain" id="chain"></div></div>
   <div class="secTitle"><div class="h3">How each agent sees it</div><span class="small">after critic review</span></div>
@@ -1565,27 +1704,29 @@ function renderInsight(){
   requestAnimationFrame(()=>requestAnimationFrame(()=>$$('#s-insight .cr').forEach(c=>c.style.strokeDashoffset=c.dataset.off)));
 }
 function renderDotplot(){
-  const el=$('#dotplot');if(!el)return;const fat=stats().fat;
+  const el=$('#dotplot');if(!el)return;const F=focusOf(),fn=F?F.name:'Fatigue',fat=E.filter(e=>e.type==='sym'&&e.name===fn&&cd(e.d)>=1).sort((a,b)=>a.d-b.d);
   if(S.dpv==='table'){el.innerHTML=`<table class="tbl"><thead><tr><th>Date</th><th>Cycle</th><th>Day</th><th style="text-align:right">Severity</th></tr></thead><tbody>${fat.map(e=>`<tr><td>${fmt(e.d)}</td><td>${cycIdx(e.d)+1}</td><td>${cd(e.d)}</td><td style="text-align:right">${e.sev}/10</td></tr>`).join('')}</tbody></table>`;return}
-  const W=320,L=58,Rr=8,rowH=34,T0=6,H=T0+4*rowH+20,cw=(W-L-Rr)/28,X=c=>L+(c-.5)*cw;
-  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="Fatigue logs by cycle day for four cycles">`;
-  s+=`<rect x="${(L+19*cw).toFixed(1)}" y="${T0}" width="${(9*cw).toFixed(1)}" height="${4*rowH}" fill="#9a6bc0" fill-opacity=".16" rx="6"/>`;
-  ['Jun–Jul','Jul–Aug','Aug–Sep','Sep–now'].forEach((n,i)=>{const cy=T0+i*rowH+rowH/2;s+=`<line x1="${L}" x2="${W-Rr}" y1="${cy}" y2="${cy}" stroke="rgba(30,26,34,.08)"/><text class="axisTxt" x="0" y="${cy+4}" style="font-size:11.5px">${n}</text>`});
-  const my=T0+cycIdx(MED_DAY)*rowH,mx=X(cd(MED_DAY)).toFixed(1);
-  s+=`<line x1="${mx}" x2="${mx}" y1="${my+5}" y2="${my+rowH-5}" stroke="#b08433" stroke-width="4" stroke-linecap="round"/>`;
-  const ty=T0+3*rowH,tx=L+cd(TODAY)*cw;
-  s+=`<rect x="${tx.toFixed(1)}" y="${ty+7}" width="${(W-Rr-tx).toFixed(1)}" height="${rowH-14}" fill="rgba(30,26,34,.06)" rx="4"/>`;
+  const rows=STARTS.filter(x=>x<=TODAY),NR=rows.length,NC=Math.max(CYCLE_N,cd(TODAY),...fat.map(e=>cd(e.d)));
+  const W=320,L=58,Rr=8,rowH=34,T0=6,H=T0+NR*rowH+20,cw=(W-L-Rr)/NC,X=c=>L+(c-.5)*cw;
+  let s=`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" role="img" aria-label="${esc(fn)} logs by cycle day for ${['no','one','two','three','four','five','six','seven'][NR]||NR} cycles">`;
+  s+=`<rect x="${(L+(CYCLE_N-9)*cw).toFixed(1)}" y="${T0}" width="${(9*cw).toFixed(1)}" height="${NR*rowH}" fill="#9a6bc0" fill-opacity=".16" rx="6"/>`;
+  rows.map((st,i)=>{const a=MON[dateOf(st).getMonth()],b=i<NR-1?MON[dateOf(rows[i+1]).getMonth()]:'now';return a===b?a:`${a}–${b}`}).forEach((n,i)=>{const cy=T0+i*rowH+rowH/2;s+=`<line x1="${L}" x2="${W-Rr}" y1="${cy}" y2="${cy}" stroke="rgba(30,26,34,.08)"/><text class="axisTxt" x="0" y="${cy+4}" style="font-size:11.5px">${n}</text>`});
+  if(MED_DAY!=null&&cd(MED_DAY)>=1){const my=T0+cycIdx(MED_DAY)*rowH,mx=X(cd(MED_DAY)).toFixed(1);
+    s+=`<line x1="${mx}" x2="${mx}" y1="${my+5}" y2="${my+rowH-5}" stroke="#b08433" stroke-width="4" stroke-linecap="round"/>`}
+  const ty=T0+cycIdx(TODAY)*rowH,tx=L+cd(TODAY)*cw;
+  if(W-Rr-tx>0)s+=`<rect x="${tx.toFixed(1)}" y="${ty+7}" width="${(W-Rr-tx).toFixed(1)}" height="${rowH-14}" fill="rgba(30,26,34,.06)" rx="4"/>`;
   fat.forEach(e=>{const cy=T0+cycIdx(e.d)*rowH+rowH/2,cx=X(cd(e.d)).toFixed(1);s+=`<circle cx="${cx}" cy="${cy}" r="${(3+e.sev*.35).toFixed(1)}" fill="#c4614f" stroke="#FFFDF9" stroke-width="2"/>`});
   fat.forEach(e=>{const cy=T0+cycIdx(e.d)*rowH+rowH/2;s+=`<circle class="dpHit" cx="${X(cd(e.d)).toFixed(1)}" cy="${cy}" r="12" fill="transparent" data-id="${e.id}" style="cursor:pointer"/>`});
-  [1,7,14,20,28].forEach(c=>s+=`<text class="axisTxt" x="${X(c).toFixed(1)}" y="${H-4}" text-anchor="middle">${c}</text>`);
+  const tk=[1,CYCLE_N-8,CYCLE_N];[7,14].forEach(t=>{if(Math.abs(t-(CYCLE_N-8))>=3&&t<CYCLE_N-2)tk.push(t)});
+  tk.sort((a,b)=>a-b).forEach(c=>s+=`<text class="axisTxt" x="${X(c).toFixed(1)}" y="${H-4}" text-anchor="middle">${c}</text>`);
   el.innerHTML=s+`</svg><div class="small" id="dpRo" style="margin-top:6px;min-height:19px">Tap a dot to see the record behind it.</div>`;
-  $$('.dpHit').forEach(c=>{const f=()=>{const e=E.find(x=>x.id===c.dataset.id);$('#dpRo').innerHTML=`<b style="color:var(--ink)">${fmt(e.d)}</b> · cycle day ${cd(e.d)} · fatigue ${e.sev}/10 <button style="color:var(--plum);font-weight:600" onclick="openEvent('${e.id}')">open →</button>`};c.addEventListener('pointerenter',f);c.addEventListener('click',f)});
+  $$('.dpHit').forEach(c=>{const f=()=>{const e=E.find(x=>x.id===c.dataset.id);$('#dpRo').innerHTML=`<b style="color:var(--ink)">${fmt(e.d)}</b> · cycle day ${cd(e.d)} · ${esc(lname(fn))} ${e.sev}/10 <button style="color:var(--plum);font-weight:600" onclick="openEvent('${e.id}')">open →</button>`};c.addEventListener('pointerenter',f);c.addEventListener('click',f)});
 }
 function whyLive(st,R){
   const W=R.why_chain||{},chip=id=>{const sid=safeId(id);return`<button class="evChip" onclick="openEvent('${sid}')">${sid}</button>`};
   const cycles=STARTS.filter(x=>x<=TODAY).length,c=+R.confidence||0;
   return[
-    ['Sources',`<div class="srcRow">${[['sym',st.fatN+' fatigue logs'],['cyc',cycles+' cycles'],['lab',st.labN+' lab values'],['slp',st.slN+' sleep nights'],['med',st.medN+' medication change'+(st.medN>1?'s':'')]].map(([k,t])=>`<span class="pill"><span class="sw" style="background:${T[k].hex}"></span>${t}</span>`).join('')}</div>`],
+    ['Sources',`<div class="srcRow">${[['sym',focusOf()?`${focusOf().n} ${lname(focusOf().name)} logs`:st.fatN+' fatigue logs'],['cyc',cycles+' cycle'+(cycles===1?'':'s')],['lab',st.labN+' lab values'],['slp',st.slN+' sleep nights'],['med',st.medN+' medication change'+(st.medN===1?'':'s')]].map(([k,t])=>`<span class="pill"><span class="sw" style="background:${T[k].hex}"></span>${t}</span>`).join('')}</div>`],
     ['Observations',(W.observations||[]).length?`<ul class="list" style="margin:0">${W.observations.map(o=>`<li><span>${esc(o.statement||'')}</span>${(o.evidence_ids||[]).slice(0,2).map(chip).join('')}</li>`).join('')}</ul>`:'<p class="small">No individual observations were cited by the agents.</p>'],
     ['Reasoning',`<p class="p">${esc(W.reasoning||'')}</p>`],
     ['Confidence',`<div class="conf"><div class="bar"><i style="width:${Math.round(c*100)}%;background:var(--iri-deep)"></i></div><b>${c.toFixed(2)}</b></div><p class="small mt8">${esc(R.confidence_word||'')}, after the critic weighed every agent's evidence.</p>`],
@@ -1615,13 +1756,29 @@ async function showWhy(){
 }
 function renderExp(){
   const el=$('#expCard');if(!el)return;const R=S.analysis&&S.analysis.report;
-  el.innerHTML=S.exp?`<div class="row"><div class="bub" style="background:var(--lab)">${ic('flask')}</div><div style="flex:1"><div class="h3">Experiment running</div><div class="small">Log energy on cycle days 6–13 · opens ${fmt(NEXT_START+5)}</div></div><span class="xpTag">Active</span></div><div class="meter mt12"><i style="width:4%;background:linear-gradient(90deg,#16917f,#4f79b8)"></i></div><div class="small mt8">0 of 8 days logged. You'll get a nudge when the window opens.</div>`
+  el.innerHTML=S.exp&&R&&R.experiment&&isPersonal()?`<div class="row"><div class="bub" style="background:var(--lab)">${ic('flask')}</div><div style="flex:1"><div class="h3">Experiment running</div><div class="small">${esc(R.experiment)}</div></div><span class="xpTag">Active</span></div><div class="small mt12">Keep logging as usual, then ask again to see whether the result changes.</div>`
+  :S.exp?`<div class="row"><div class="bub" style="background:var(--lab)">${ic('flask')}</div><div style="flex:1"><div class="h3">Experiment running</div><div class="small">Log energy on cycle days 6–13 · opens ${fmt(NEXT_START+5)}</div></div><span class="xpTag">Active</span></div><div class="meter mt12"><i style="width:4%;background:linear-gradient(90deg,#16917f,#4f79b8)"></i></div><div class="small mt8">0 of 8 days logged. You'll get a nudge when the window opens.</div>`
   :`<div class="row between"><div class="eyebrow" style="color:var(--plum)">Tiny experiment</div><span class="xpTag">+30 XP</span></div>${R&&R.experiment?`<div class="h3 mt8">${esc(R.experiment)}</div><p class="small mt8">The critic's top suggestion for settling where the agents disagree. Start it and Hormony will nudge you at the right moment.</p>`:`<div class="h3 mt8">Test the medication thread</div><p class="small mt8">If fatigue also shows up on cycle days 6–13, the medication explanation gets stronger. If it doesn't, cycle timing wins. Eight quick logs settle it.</p>`}<button class="btn sm ghost mt12" onclick="startExp(this)">${ic('flask')}Start experiment</button>`;
 }
 function startExp(b){S.exp=true;xp(30,b);earn('exp');confetti(60,.5,.7);renderExp();toast('Experiment started')}
 
 /* ---------- INSIGHTS list ---------- */
+function renderInsightsPersonal(){
+  const R=S.analysis&&S.analysis.report,lk='width:14px;height:14px',rd=readiness();
+  const sl=E.filter(e=>e.type==='slp').length,cnt={},lc={};
+  E.filter(e=>e.type==='sym').forEach(e=>cnt[e.name]=(cnt[e.name]||0)+1);E.filter(e=>e.type==='lab').forEach(e=>lc[labKey(e)]=(lc[labKey(e)]||0)+1);
+  const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0],tn=top?top[1]:0,lm=Math.max(0,...Object.values(lc));
+  const next=[['Sleep × cycle','Does my sleep change across my cycle?',Math.min(100,Math.round(sl/14*100)),sl>=14?'Ready to ask':`Log ${14-sl} more night${14-sl===1?'':'s'} of sleep`,'slp'],
+    [top?top[0]+' timing':'Symptom timing',top?`Does my ${top[0].toLowerCase()} cluster at one point in my cycle?`:'Do my symptoms cluster at one point in my cycle?',Math.min(100,Math.round(tn/6*100)),tn>=6?'Ready to ask':`${6-tn} more symptom log${6-tn===1?'':'s'} needed`,'sym'],
+    ['Lab trends','How are my lab results changing over time?',Math.min(100,lm*50),lm>=2?'Ready to ask':lm?'One more result of the same test':'Add a lab value','lab']];
+  $('#insCount').textContent=`${R?1:0} of 4 unlocked`;
+  let h=R?`<div class="card tap iCard unlocked iriCard" onclick="push('insight')"><div class="row between"><span class="pill pearl">${ic('sparkle',lk)}Unlocked</span><span class="small">${esc(R.confidence_word||'')} confidence</span></div><div class="ttl">${esc(R.headline||'Your latest analysis')}</div><div class="row" style="gap:6px;flex-wrap:wrap">${AG.map(a=>`<span class="pill"><span class="sw" style="background:${T[a.k].hex}"></span>${a.name}</span>`).join('')}</div></div>`
+    :`<div class="card tap iCard q" onclick="openAsk()"><div class="row between"><span class="pill">${ic('lock',lk)}${rd.pct}% there</span><span class="small">Your first insight</span></div><div class="ttl">Your first insight appears after your first analysis.</div><div class="meter"><i style="width:${rd.pct}%"></i></div><div class="small mt8">Ask the agents a question →</div></div>`;
+  h+=next.map(([t,q,p,need,k])=>`<div class="card tap iCard locked q" onclick="${p>=100?esc(`openAsk(${JSON.stringify(q)})`):`openLog();setTimeout(()=>logForm('${k}'),80)`}"><div class="row between"><span class="pill">${ic(p>=100?'unlock':'lock',lk)}${p}% there</span><span class="small">${esc(t)}</span></div><div class="ttl">${esc(q)}</div><div class="meter"><i style="width:${p}%"></i></div><div class="small mt8">${esc(need)} →</div></div>`).join('');
+  $('#insList').innerHTML=h;
+}
 function renderInsights(){
+  if(isPersonal())return renderInsightsPersonal();
   $('#insCount').textContent=`${S.unlocked?1:0} of 4 unlocked`;
   const lk=`width:14px;height:14px`;
   const locked=[['Sleep × cycle rhythm','Your sleep shortens by about an hour before your period.',60,'Log 4 more nights of sleep','slp'],['Headache timing','Headaches land within a day of fatigue days.',35,'3 more headache logs needed','sym'],['Anxiety and your cycle','Anxiety clusters around cycle days 19–24.',45,'Log mood for 5 more days','sym']];
@@ -1665,6 +1822,10 @@ function graphModel(){
     {a:'iron',b:'fat',type:'Untested',ev:'No iron, ferritin or B12 results in 90 days',win:'—',conf:null,alt:['Ask your clinician whether testing would help'],short:'untested',ghost:true}]};
 }
 function startGraph(){
+  if(isPersonal()&&!(S.analysis&&S.analysis.graph&&(S.analysis.graph.nodes||[]).length)){
+    stopGraph();G=null;$('#graphSvg').innerHTML='';$('#graphLegend').innerHTML='';
+    $('#graphNote').innerHTML=ic('help')+'<div><b style="color:var(--ink)">No graph yet.</b> After your first analysis, the factors the agents linked to your symptoms appear here, each link backed by your records.</div>';
+    $('#relCard').innerHTML=`<button class="btn primary block" onclick="openAsk()">${ic('sparkle')}Ask the agents</button>`;return}
   const m=graphModel();m.src=S.analysis&&S.analysis.graph?S.analysis.id:'local';
   if(!G||G.src!==m.src||G.nodes.length!==m.nodes.length||G.edges.length!==m.edges.length){G=m;G.nodes.forEach(n=>{n.vx=0;n.vy=0});G.sel={edge:0};G.alpha=1}
   else{G.edges.forEach((e,i)=>Object.assign(e,m.edges[i]));G.nodes.forEach((n,i)=>{n.sub=m.nodes[i].sub});G.alpha=Math.max(G.alpha,.4)}
@@ -1724,6 +1885,7 @@ const gdot=id=>`<span style="display:inline-block;width:10px;height:10px;border-
 const confWord=c=>c>=.7?'Medium-high':c>=.55?'Medium':'Low';
 function renderRel(){
   const el=$('#relCard'),sel=G.sel;
+  if(sel.node===undefined&&!G.edges[sel.edge]){el.innerHTML='<div class="small">No links between factors yet. Keep logging and ask again.</div>';return}
   if(sel.node!==undefined){const n=G.nodes[sel.node],es=G.edges.map((e,i)=>[e,i]).filter(([e])=>e.a===n.id||e.b===n.id);
     el.innerHTML=`<div class="eyebrow">Factor</div><div class="h3 mt8">${gdot(n.id)}${esc(n.label)}</div><p class="small mt8">${esc(n.sub)} · ${es.length} link${es.length===1?'':'s'}. Tap one to inspect it.</p><div class="evChips">${es.map(([e,i])=>`<button class="evChip" onclick="G.sel={edge:${i}};renderRel()">${esc(nm(e.a))} ${e.type==='Co-occurrence'?'↔':'→'} ${esc(nm(e.b))}</button>`).join('')}</div>`;
     replay(el,'done');return}
@@ -1749,26 +1911,31 @@ function briefData(){
     ['slp','Sleep',`On nights outside cycle days 20–28, average sleep fell from ${st.slBefore} h to ${st.slAfter} h after ${fmt(MED_DAY)}. Late-luteal nights averaged ${st.slLate} h vs ${st.slOther} h on other nights.`]],
   interp:'Multiple factors may explain the observed pattern. The current evidence does not establish a single causal explanation. Specialist agents disagreed on the leading factor (cycle timing vs. medication vs. lab change), and that disagreement is preserved here.'};
 }
+const noBrief=()=>isPersonal()&&!(S.analysis&&S.analysis.brief);
+const briefStart=()=>isPersonal()&&E.length?Math.max(0,Math.min(...E.map(e=>e.d))):0;
 function renderBrief(){
-  const{st,obs,interp,qs,footer}=briefData(),Q=qs||QS;
+  $('#copyBtn').innerHTML=ic('copy')+'Copy';$('#shareBtn').innerHTML=ic('share')+'Share brief';
+  if(noBrief()){$('#briefBody').innerHTML=`<div class="card iriCard"><div class="lockBadge">${ic('doc')}</div><div class="h2 mt12">Your brief builds <em>itself</em></div><p class="p mt8">After your first analysis, Hormony writes a one-page summary of what it observed, with questions you can take to your clinician.</p><button class="btn primary block mt16" onclick="openAsk()">${ic('sparkle')}Ask the agents</button></div>`;return}
+  const{st,obs,interp,qs,footer}=briefData(),Q=qs||QS,d0=briefStart(),cyc=STARTS.filter(x=>x<=TODAY).length;
   if(qs&&S.qsFor!==S.analysis.id){S.qsFor=S.analysis.id;S.qs=new Set(qs.map((_,i)=>i))}
-  $('#briefBody').innerHTML=`<div class="paper"><div class="ph"><div><div class="pt">Endocrine Insight Report</div><div class="pm">Nancy · ${fmt(0)} – ${fmt(TODAY)}, ${dateOf(TODAY).getFullYear()} (${TODAY+1} days)<br>${st.symN} symptom logs · ${st.labN} lab values · ${st.slN} sleep nights · 4 cycles · ${st.medN} medication change${st.medN>1?'s':''}</div></div><div class="logoMini"></div></div>
+  $('#briefBody').innerHTML=`<div class="paper"><div class="ph"><div><div class="pt">Endocrine Insight Report</div><div class="pm">${esc(NAME())} · ${fmt(d0)} – ${fmt(TODAY)}, ${dateOf(TODAY).getFullYear()} (${TODAY-d0+1} days)<br>${st.symN} symptom logs · ${st.labN} lab values · ${st.slN} sleep nights · ${cyc} cycle${cyc===1?'':'s'} · ${st.medN} medication change${st.medN===1?'':'s'}</div></div><div class="logoMini"></div></div>
   <h5>Observed patterns</h5>${obs.map(([k,t,x],i)=>`<div class="obs"><div class="n" style="background:${T[k].hex}">${i+1}</div><div><b>${t}.</b> ${esc(x)}</div></div>`).join('')}
   <h5>System interpretation</h5><div class="interp">${esc(interp)}</div>
   <h5>Questions for my clinician <span style="text-transform:none;letter-spacing:0;font-weight:500">· tap to include</span></h5>
   ${Q.map((q,i)=>`<div class="qq ${S.qs.has(i)?'on':''}" onclick="toggleQ(${i},this)" role="checkbox" aria-checked="${S.qs.has(i)}" tabindex="0"><div class="box">${ic('check')}</div><div>${esc(q)}</div></div>`).join('')}
   <div class="foot">${footer?esc(footer):'Not a diagnosis. Hormony surfaces time-based associations in self-reported and uploaded data so you can have a better-informed conversation with your clinician.'} Generated ${fmt(TODAY)}, ${dateOf(TODAY).getFullYear()}.</div></div>`;
-  $('#copyBtn').innerHTML=ic('copy')+'Copy';$('#shareBtn').innerHTML=ic('share')+'Share brief';
 }
 function toggleQ(i,el){S.qs.has(i)?S.qs.delete(i):S.qs.add(i);el.classList.toggle('on');el.setAttribute('aria-checked',S.qs.has(i));buzz(4)}
-function briefText(){const{obs,interp,qs}=briefData(),Q=qs||QS;return['ENDOCRINE INSIGHT REPORT: Nancy',`${fmt(0)} – ${fmt(TODAY)}, ${dateOf(TODAY).getFullYear()} (${TODAY+1} days) · generated by Hormony`,'','OBSERVED PATTERNS',...obs.map((o,i)=>`${i+1}. ${o[1]}: ${o[2]}`),'','SYSTEM INTERPRETATION',interp,'','QUESTIONS FOR MY CLINICIAN',...[...S.qs].sort((a,b)=>a-b).filter(i=>i<Q.length).map(i=>'• '+Q[i]),'','Not a diagnosis. Associations from self-reported and uploaded data.'].join('\n')}
+function briefText(){const{obs,interp,qs}=briefData(),Q=qs||QS,d0=briefStart();return['ENDOCRINE INSIGHT REPORT: '+NAME(),`${fmt(d0)} – ${fmt(TODAY)}, ${dateOf(TODAY).getFullYear()} (${TODAY-d0+1} days) · generated by Hormony`,'','OBSERVED PATTERNS',...obs.map((o,i)=>`${i+1}. ${o[1]}: ${o[2]}`),'','SYSTEM INTERPRETATION',interp,'','QUESTIONS FOR MY CLINICIAN',...[...S.qs].sort((a,b)=>a-b).filter(i=>i<Q.length).map(i=>'• '+Q[i]),'','Not a diagnosis. Associations from self-reported and uploaded data.'].join('\n')}
 async function copyBrief(){
+  if(noBrief())return toast('Ask the agents first, then share the brief','help');
   const txt=briefText();
   if(window.ReactNativeWebView){bridge('copy',{text:txt});return briefDone('Brief copied to clipboard')}
   try{await navigator.clipboard.writeText(txt)}catch(e){const t=document.createElement('textarea');t.value=txt;document.body.appendChild(t);t.select();try{document.execCommand('copy')}catch(_){}t.remove()}
   briefDone('Brief copied to clipboard');
 }
 async function shareBrief(){
+  if(noBrief())return toast('Ask the agents first, then share the brief','help');
   if(window.ReactNativeWebView){bridge('share',{text:briefText()});return briefDone('Brief shared')}
   if(navigator.share){try{await navigator.share({title:'Endocrine Insight Report',text:briefText()});briefDone('Brief shared');return}catch(e){if(e.name==='AbortError')return}}
   copyBrief();
@@ -1779,19 +1946,108 @@ function briefDone(msg){toast(msg);if(!S.briefed){S.briefed=true;earn('brief');x
 function renderMe(){
   const L=lvl(),p=lvlPct(),st=stats();
   $('#s-me').innerHTML=`<div class="hdr"><div><div class="eyebrow">Your space</div><h1 class="h1">You, <em>in context</em></h1></div></div>
-  <div class="card"><div class="prof"><div class="bigAv">${ringSvg(84,5,p)}<div class="face">N</div></div><div style="flex:1"><div class="h2">Nancy</div><div class="small">Level ${L.n} · ${L.name}</div><div class="xpBar"><i style="width:${(p*100).toFixed(0)}%"></i></div><div class="small mt8">${L.next?`${S.xp-L.from} / ${L.to-L.from} XP to ${L.next[1]}`:'Max level reached'}</div></div></div>
-  <div class="stats3 mt16"><div class="stat"><b>${S.streak}</b><span>day streak</span></div><div class="stat"><b>${S.badges.size}</b><span>badges</span></div><div class="stat"><b>${S.unlocked?1:0}</b><span>insights</span></div></div></div>
+  <div class="card"><div class="prof"><div class="bigAv">${ringSvg(84,5,p)}<div class="face">${esc(initialOf(NAME()))}</div></div><div style="flex:1"><div class="h2">${esc(NAME())}</div><div class="small">Level ${L.n} · ${L.name}</div><div class="xpBar"><i style="width:${(p*100).toFixed(0)}%"></i></div><div class="small mt8">${L.next?`${S.xp-L.from} / ${L.to-L.from} XP to ${L.next[1]}`:'Max level reached'}</div></div></div>
+  <div class="stats3 mt16"><div class="stat"><b>${S.streak}</b><span>day streak</span></div><div class="stat"><b>${S.badges.size}</b><span>badges</span></div><div class="stat"><b>${S.unlocked?1:0}</b><span>insights</span></div></div></div>${profilesCard()}
   <div class="secTitle"><div class="h3">Badges</div><span class="small">${S.badges.size} of ${BADGES.length}</span></div>
   <div class="card"><div class="badges">${BADGES.map(([k,e,n])=>`<div class="badge ${S.badges.has(k)?'':'locked'} ${S.fresh===k?'fresh':''}"><div class="b">${ic(e)}</div>${n}</div>`).join('')}</div></div>
   <div class="secTitle"><div><div class="h3">Agent access</div><div class="small">Choose what each specialist may read</div></div></div>
   <div class="card" style="padding-top:8px;padding-bottom:12px">${AG.map(a=>`<div class="setRow">${agAv(a,40)}<div><div class="t">${a.name}</div><div class="s">${a.reads}</div></div><button class="tog ${S.paused.has(a.k)?'':'on'}" style="--c:${T[a.k].hex}" onclick="toggleAgent('${a.k}',this)" aria-label="Allow ${a.name}" aria-pressed="${!S.paused.has(a.k)}"><i></i></button></div>`).join('')}</div>
   <div class="secTitle"><div class="h3">Data sources</div></div>
-  <div class="card" style="padding-top:8px">${[['lab','Lab reports',`${st.labN} values · PDF + scans`],['sym','Daily check-ins',`${st.symN} symptom logs`],['cyc','Cycle history','4 cycles · manual'],['slp','Sleep app',`${st.slN} nights · CSV import`],['med','Medications',`${st.medN} change${st.medN>1?'s':''} · manual`]].map(([k,t,s])=>`<div class="setRow"><div class="bub" style="background:${T[k].hex}">${ic(T[k].icon)}</div><div><div class="t">${t}</div><div class="s">${s}</div></div><span class="synced">Synced</span></div>`).join('')}
+  <div class="card" style="padding-top:8px">${(isPersonal()?sourcesPersonal(st):[['lab','Lab reports',`${st.labN} values · PDF + scans`],['sym','Daily check-ins',`${st.symN} symptom logs`],['cyc','Cycle history','4 cycles · manual'],['slp','Sleep app',`${st.slN} nights · CSV import`],['med','Medications',`${st.medN} change${st.medN>1?'s':''} · manual`]]).map(([k,t,s])=>`<div class="setRow"><div class="bub" style="background:${T[k].hex}">${ic(T[k].icon)}</div><div><div class="t">${t}</div><div class="s">${s}</div></div><span class="synced">Synced</span></div>`).join('')}
   <button class="btn ghost block mt12" onclick="pickImport()">${ic('upload')}Import CSV / JSON</button></div>
-  <div class="card pearlCard"><div class="row" style="align-items:flex-start"><div class="bub" style="background:var(--lab)">${ic('shield')}</div><div><div class="h3">Private by design</div><div class="small" style="margin-top:3px">Stored on this device. Agents only see the records scoped to your question, and every conclusion keeps a link back to its source.</div></div></div></div>
-  <button class="btn ghost block" onclick="location.reload()">Reset demo</button>`;
+  <div class="card pearlCard"><div class="row" style="align-items:flex-start"><div class="bub" style="background:var(--lab)">${ic('shield')}</div><div><div class="h3">Private by design</div><div class="small" style="margin-top:3px">${API.on?privacyText():'Stored on this device. Agents only see the records scoped to your question, and every conclusion keeps a link back to its source.'}</div></div></div></div>
+  ${API.base?'':`<button class="btn ghost block" onclick="location.reload()">Reset demo</button>`}`;
   S.fresh=null;
 }
+function sourcesPersonal(st){
+  const cyc=E.filter(e=>e.type==='cyc'&&/period started/i.test(e.name)).length;
+  return[['lab','Lab results',`${st.labN} value${st.labN===1?'':'s'}`],['sym','Daily check-ins',`${st.symN} symptom log${st.symN===1?'':'s'}`],
+    ['cyc','Cycle history',`${cyc} period${cyc===1?'':'s'} logged · ${CYCLE_N}-day cycle`],['slp','Sleep',`${st.slN} night${st.slN===1?'':'s'}`],['med','Medications',`${st.medN} change${st.medN===1?'':'s'}`]];
+}
+const recCount=p=>Object.values(p.counts||{}).reduce((a,b)=>a+b,0);
+function privacyText(){
+  const host=(API.base.match(/^https?:\/\/([^/]+)/)||[0,API.base])[1],h=S.health||{},llm=engineLabel(h.llm);
+  const why=h.llm==='demo'?'the built-in rules engine, so nothing leaves that server':llm?`<b style="color:var(--ink)">${esc(llm)}</b>`:'the reasoning engine';
+  return`Your records are stored on the Hormony server at <b style="color:var(--ink)">${esc(host)}</b>. When you ask a question, only the records scoped to it are analysed by ${why}. Every conclusion keeps a link back to its source.`;
+}
+function profilesCard(){
+  if(!API.on)return'';
+  const list=S.profiles||[];
+  return`<div id="profCard"><div class="secTitle"><div><div class="h3">Profiles</div><div class="small">Each profile keeps its own records</div></div></div>
+  <div class="card" style="padding-top:8px">${list.map(p=>`<div class="setRow"><div class="bub" style="background:${p.kind==='demo'?'#9a6bc0':'var(--plum)'};font-family:var(--serif);font-size:17px">${esc(initialOf(p.name))}</div><div><div class="t">${esc(p.name)}</div><div class="s">${p.kind==='demo'?'Sample data · demo':`${recCount(p)} records · ${p.cycle_length}-day cycle`}</div></div>${p.id===PID?'<span class="synced">Active</span>':`<button class="btn sm ghost" style="margin-left:auto" onclick="pickProfile('${safeId(p.id)}')">Switch</button>`}</div>`).join('')}
+  <button class="btn ghost block mt12" onclick="showWelcome('setup')">${ic('plus')}Add a profile</button>
+  ${isPersonal()?`<button class="btn ghost block mt12" style="color:#b4432f" onclick="askDelete()">Delete my data</button>`:''}</div></div>`;
+}
+function askDelete(){
+  openSheet(`<div class="eyebrow">Delete my data</div><div class="h2" style="margin-top:4px">Delete <em>${esc(NAME())}</em>?</div>
+  <p class="p mt12">This removes every record, analysis and uploaded report for this profile from the Hormony server. It can't be undone.</p>
+  <button class="btn primary block mt16" style="background:#b4432f;animation:none" onclick="deleteProfile(this)">Delete everything</button>
+  <button class="btn ghost block mt12" onclick="closeSheet()">Keep my data</button>`);
+}
+async function deleteProfile(btn){
+  btn.disabled=true;btn.textContent='Deleting…';
+  try{await API.del(`/profiles/${encodeURIComponent(PID)}`)}
+  catch(e){btn.disabled=false;btn.textContent='Delete everything';return toast(errMsg(e),'help')}
+  store.set('hormony.game.'+PID,null);store.set('hormony.profile',null);
+  S.profiles=(S.profiles||[]).filter(p=>p.id!==PID);S.profile=null;PID='';
+  closeSheet();showWelcome('intro');
+}
+async function pickProfile(id){
+  const p=(S.profiles||[]).find(x=>x.id===id);if(!p)return;
+  try{await switchProfile(p);hideWelcome();toast(p.kind==='demo'?'Exploring the demo':`Welcome back, ${p.name}`)}catch(e){toast(errMsg(e),'help')}
+}
+
+/* ---------- welcome: start your own record or explore the demo ---------- */
+const W={step:'intro',cycle:28};
+const localISO=dt=>dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
+function showWelcome(step='intro'){W.step=step;renderWelcome();const el=$('#welcome');el.classList.add('on');el.scrollTop=0;closeSheet()}
+function hideWelcome(){$('#welcome').classList.remove('on')}
+function renderWelcome(){
+  const el=$('#welcome'),mine=(S.profiles||[]).filter(p=>p.kind==='personal'),orb='<div class="wOrb"><div class="logoOrb"></div></div>',ctr='text-align:center';
+  if(W.step==='offline'){const host=(API.base.match(/^https?:\/\/([^/]+)/)||[0,API.base])[1];
+    el.innerHTML=`<div class="wBody">${orb}<div class="eyebrow" style="${ctr}">Can't reach Hormony</div><h1 class="h1" style="${ctr};margin-top:6px">Your record is <em>on the server</em></h1>
+    <p class="p" style="${ctr};margin:12px auto 26px;max-width:310px">Hormony couldn't connect to <b style="color:var(--ink)">${esc(host)}</b>. Check that the backend is running and that your phone is on the same Wi-Fi, then try again.</p>
+    <button class="btn primary block" onclick="retryBoot(this)">Try again</button>
+    <button class="btn ghost block mt12" onclick="hideWelcome();toast('Offline · showing demo data','help')">Explore the demo instead</button>
+    <p class="small" style="${ctr};margin-top:8px">The demo uses sample data. Your record isn't touched.</p></div>`;return}
+  if(W.step==='setup'){const t=new Date(),min=new Date(t.getFullYear(),t.getMonth(),t.getDate()-120);
+    el.innerHTML=`<div class="wBody"><div class="row" style="gap:12px"><button class="backBtn" onclick="${S.profile?'hideWelcome()':"showWelcome('intro')"}" aria-label="Back">${ic('back')}</button><div><div class="eyebrow">Your record</div><div class="h2">Set up <em>Hormony</em></div></div></div>
+    <p class="small mt12">Three quick things so cycle days line up. Everything else you log as you go.</p>
+    <div class="field"><label for="wName">What should we call you?</label><input class="inp" id="wName" maxlength="40" autocomplete="given-name" placeholder="First name"></div>
+    <div class="field"><label for="wDate">When did your last period start?</label><input class="inp" id="wDate" type="date" min="${localISO(min)}" max="${localISO(t)}"></div>
+    <div class="field"><label>Usual cycle length</label><div class="stepper" style="margin-top:0"><button class="stepBtn" onclick="wCycle(-1)" aria-label="Shorter cycle">−</button><div class="stepVal" id="wCyc">${wCycTxt()}</div><button class="stepBtn" onclick="wCycle(1)" aria-label="Longer cycle">+</button></div><div class="small mt8">Not sure? Leave it at 28. You can log each period as it starts.</div></div>
+    <div class="note mt16">${ic('shield')}<div>${privacyText()} You can delete your data from Me at any time.</div></div>
+    <div class="small" id="wErr" role="alert" style="color:#b4432f;min-height:18px"></div>
+    <button class="btn primary block mt8" onclick="createProfile(this)">${ic('check')}Create my record</button></div>`;return}
+  el.innerHTML=`<div class="wBody">${orb}<div class="eyebrow" style="${ctr}">Welcome to Hormony</div><h1 class="h1" style="${ctr};margin-top:6px">Your hormones, <em>in context</em></h1>
+  <p class="p" style="${ctr};margin:12px auto 26px;max-width:310px">Log how you feel, add your lab reports, and three specialist agents look for patterns across your cycle.</p>
+  ${mine.length?`<div class="eyebrow" style="margin:0 2px 8px">Continue</div>`+mine.map(p=>`<button class="card tap wProf" onclick="pickProfile('${safeId(p.id)}')"><div class="bub" style="background:var(--plum);font-family:var(--serif);font-size:17px">${esc(initialOf(p.name))}</div><div style="flex:1"><div class="h3">${esc(p.name)}</div><div class="small">${recCount(p)} records · ${p.cycle_length}-day cycle</div></div>${ic('chev','width:18px;height:18px;color:var(--faint)')}</button>`).join(''):''}
+  <button class="btn primary block" onclick="showWelcome('setup')">${ic('plus')}${mine.length?'Start a new record':'Start my own record'}</button>
+  <p class="small" style="${ctr};margin:8px 0 20px">It starts empty. Nothing is pre-filled.</p>
+  <button class="btn ghost block" onclick="useDemo(this)">Explore the demo</button>
+  <p class="small" style="${ctr};margin-top:8px">Sample data for a fictional person, Nancy: 90 days of logs, labs and sleep.</p></div>`;
+}
+const wCycTxt=()=>`${W.cycle} days<small>${W.cycle<=35?'typical range':'longer than typical'}</small>`;
+function wCycle(dv){W.cycle=Math.max(21,Math.min(45,W.cycle+dv));const v=$('#wCyc');v.innerHTML=wCycTxt();replay(v);buzz(5)}
+async function createProfile(btn){
+  const name=$('#wName').value.trim(),date=$('#wDate').value,err=$('#wErr');err.textContent='';
+  if(!name){err.textContent='Add your first name.';$('#wName').focus();return}
+  if(!date){err.textContent='Pick the day your last period started.';$('#wDate').focus();return}
+  const lbl=btn.innerHTML;btn.disabled=true;btn.textContent='Creating your record…';
+  try{
+    const p=await API.post('/profiles',{name,last_period_start:date,cycle_length:W.cycle});
+    S.profiles=[...(S.profiles||[]).filter(x=>x.id!==p.id),p];
+    await switchProfile(p);hideWelcome();W.cycle=28;
+    setTimeout(()=>{confetti(140,.5,.4);buzz([10,40,10]);earn('first');xp(20,$('#avatarBtn'));toast(`Welcome, ${p.name}`,'sparkle')},350);
+  }catch(e){err.textContent=errMsg(e);btn.disabled=false;btn.innerHTML=lbl}
+}
+async function useDemo(btn){
+  const p=(S.profiles||[]).find(x=>x.kind==='demo');
+  if(!p){hideWelcome();return toast('No demo profile on this server','help')}
+  if(btn)btn.disabled=true;
+  try{await switchProfile(p);hideWelcome()}catch(e){if(btn)btn.disabled=false;toast(errMsg(e),'help')}
+}
+async function retryBoot(btn){btn.disabled=true;btn.textContent='Connecting…';S.source=undefined;await bootLive()}
 function toggleAgent(k,b){const a=AG.find(x=>x.k===k);if(S.paused.has(k)){S.paused.delete(k);b.classList.add('on');toast(a.name+' can read your data again')}else{S.paused.add(k);b.classList.remove('on');toast(a.name+' paused · it will skip the next analysis','lock')}b.setAttribute('aria-pressed',!S.paused.has(k));buzz(6)}
 
 /* ---------- desktop demo guide ---------- */
@@ -1814,7 +2070,7 @@ function init(){
   $('#tlAdd').innerHTML=ic('plus');$('#dbClose').innerHTML=ic('x');$('#grBack').innerHTML=ic('back');$('#brBack').innerHTML=ic('back');
   $('#icGraph').innerHTML=ic('graph');$('#icBrief').innerHTML=ic('doc');$('#chev1').innerHTML=ic('chev');$('#chev2').innerHTML=ic('chev');
   const hr=new Date().getHours();
-  $('#greet').innerHTML=`${hr<12?'Good morning':hr<18?'Good afternoon':'Good evening'},<br><em>Nancy</em>`;
+  $('#greet').innerHTML=`${hr<12?'Good morning':hr<18?'Good afternoon':'Good evening'},<br><em>${esc(NAME())}</em>`;
   $('#todayDate').textContent=`${WD[dateOf(TODAY).getDay()]} · ${fmt(TODAY)}`;
   const tick=()=>{const d=new Date();$('#clock').textContent=d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')};tick();setInterval(tick,30000);
   renderStreak();renderAvatar();renderRing();initRing();
@@ -1822,7 +2078,8 @@ function init(){
   $('#ringHint').innerHTML=ic('cycle','width:15px;height:15px')+'Drag around the ring to replay this cycle';
   renderUnlock();renderCheckin();renderQuest();renderStats();
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeSheet();$('#levelup').classList.remove('on')}});
-  setTimeout(()=>$('#splash').classList.add('off'),RM?150:1500);
+  if(API.base)$('#splash').onclick=null;   // live: the splash stays until we know whose record to show
+  else setTimeout(()=>$('#splash').classList.add('off'),RM?150:1500);
 }
 init();
 bootLive();

@@ -309,7 +309,7 @@ class DemoLLM:
                                       confidence=round(0.5 + min(0.3, (post - pre) / max(post, 1) * 0.4), 2),
                                       caveats=["Other things changed in the same period"])
         if agent == "cycle":
-            timing = next(((i, s, ids) for i, s, ids in facts if "cycle days 20–28" in s and " of " in s and ids), None)
+            timing = next(((i, s, ids) for i, s, ids in facts if re.search(r"cycle days \d+–\d+", s) and " of " in s and ids), None)
             if timing:
                 a, b = _ints(timing[1])[:2]
                 if b and a / b >= 0.5:

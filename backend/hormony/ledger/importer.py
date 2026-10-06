@@ -5,10 +5,10 @@ from datetime import date as Date
 from typing import Optional
 from pydantic import BaseModel
 
-from ..config import settings
 from ..db import SessionLocal
 from ..models import Event
 from .cycle import canon_type
+from .profiles import today_for
 
 VALID_TYPES = {"cycle", "lab", "symptom", "sleep", "med"}
 # legacy short codes used in prototype/tests
@@ -50,6 +50,7 @@ def _gen_id(ev_type: str, d: Date, code: Optional[str], name: str, existing: set
 def import_rows(
     rows: list[dict], patient_id: str, source: str, source_ref: str
 ) -> ImportResult:
+    today = today_for(patient_id)
     db = SessionLocal()
     try:
         db_ids = {r[0] for r in db.query(Event.id).filter(Event.patient_id == patient_id).all()}
@@ -70,7 +71,7 @@ def import_rows(
             if not ev_type:
                 res.errors.append(f"row {idx}: unknown type {row.get('type')!r}")
                 continue
-            if d > settings.today_date:
+            if d > today:
                 res.errors.append(f"row {idx}: date {raw_date} is in the future")
                 continue
             name = str(row.get("name", "") or "").strip() or ev_type

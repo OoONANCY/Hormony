@@ -28,6 +28,7 @@ def build(stats: dict, verdict, hypotheses: Optional[Dict[str, object]] = None) 
     if not focus:
         return {"nodes": nodes, "edges": edges}
     f_low = lname(focus["name"])
+    days = "{}–{}".format(*(stats.get("late_window") or [20, 28]))
     alts_sleep = ["Sleep was also shorter in this window"] if sl and sl.get("late_avg") and sl.get("other_avg") \
         and sl["late_avg"] < sl["other_avg"] else []
 
@@ -38,9 +39,9 @@ def build(stats: dict, verdict, hypotheses: Optional[Dict[str, object]] = None) 
 
     nodes.append({"id": "fat", "label": focus["name"], "sub": f"{focus['n']} logs", "type": "symptom"})
     if focus["late_ids"]:
-        nodes.append({"id": "lut", "label": "Late luteal", "sub": "days 20–28", "type": "cycle"})
+        nodes.append({"id": "lut", "label": "Late luteal", "sub": f"days {days}", "type": "cycle"})
         edge("lut", "fat", "Temporal association", f"{focus['late_n']} of {focus['n']} {f_low} logs", focus["late_ids"],
-             f"Cycle days 20–28, {focus['cycles_with']} of {focus['cycles_total']} cycles", "cycle",
+             f"Cycle days {days}, {focus['cycles_with']} of {focus['cycles_total']} cycles", "cycle",
              alts_sleep + ["Symptoms may be noticed more late in the cycle"])
     if med:
         nodes.append({"id": "med", "label": med["short"], "sub": f"from {med['label']}", "type": "med"})
@@ -67,11 +68,11 @@ def build(stats: dict, verdict, hypotheses: Optional[Dict[str, object]] = None) 
         if focus["late_ids"] and sl.get("late_ids") and sl.get("late_avg") is not None and sl.get("other_avg") is not None:
             edge("lut", "slp", "Temporal association (not assessed by an agent)",
                  f"Late-luteal nights {sl['late_avg']:.1f} h vs {sl['other_avg']:.1f} h", sl["late_ids"],
-                 "Cycle days 20–28", None, ["Stress or schedule changes were not logged"])
+                 f"Cycle days {days}", None, ["Stress or schedule changes were not logged"])
         if med and sl.get("after_ids") and sl.get("before_avg") is not None and sl.get("after_avg") is not None:
             edge("med", "slp", "Before / after association (not assessed by an agent)",
                  f"Average sleep {sl['before_avg']:.1f} h → {sl['after_avg']:.1f} h", sl["after_ids"],
-                 f"Nights outside days 20–28, before vs after {med['label']}", None, ["Seasonal or schedule change"])
+                 f"Nights outside days {days}, before vs after {med['label']}", None, ["Seasonal or schedule change"])
     if stats.get("cooccur"):
         c = stats["cooccur"][0]
         if c["co"]:
