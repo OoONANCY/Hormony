@@ -8,18 +8,30 @@ import math
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
 
+from ..auth import get_current_user
 from ..config import settings
 from ..db import get_db
 from ..ledger import cycle as cyc
 from ..ledger.importer import import_rows
 from ..ledger.store import event_out
-from ..models import Event
+from ..models import Event, User
 from ..schemas import EventIn, EventOut, SummaryOut, TimelineOut
 
 router = APIRouter()
 
 TYPES = {"cycle", "lab", "symptom", "sleep", "med"}
 PREFIX = {"cycle": "CYC", "lab": "LAB", "symptom": "SYM", "sleep": "SLP", "med": "MED"}
+def _require_patient(pid: str, user_id: str, db: Session) -> None:
+    user = db.query(User).filter(User.id == user_id).first()
+
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    if user.patient_id != pid:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have access to this patient",
+        )
 
 
 def _rows(db: Session, pid: str):
@@ -27,7 +39,14 @@ def _rows(db: Session, pid: str):
 
 
 @router.get("/patients/{pid}/timeline", response_model=TimelineOut)
-def timeline(pid: str, days: int = Query(91, ge=1, le=3660), types: str = "", db: Session = Depends(get_db)):
+def timeline(
+    pid: str,
+    days: int = Query(91, ge=1, le=3660),
+    types: str = "",
+    current_user: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _require_patient(pid, current_user, db)
     today = settings.today_date
     rows = _rows(db, pid)
     starts = cyc.period_starts(rows)
@@ -42,7 +61,12 @@ def timeline(pid: str, days: int = Query(91, ge=1, le=3660), types: str = "", db
 
 
 @router.get("/patients/{pid}/summary", response_model=SummaryOut)
-def summary(pid: str, db: Session = Depends(get_db)):
+def summary(
+    pid: str,
+    current_user: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+    ):
+    _require_patient(pid, current_user, db)
     rows = _rows(db, pid)
     counts = {k: 0 for k in sorted(TYPES)}
     for r in rows:
@@ -51,7 +75,13 @@ def summary(pid: str, db: Session = Depends(get_db)):
 
 
 @router.post("/patients/{pid}/events", response_model=EventOut)
-def create_event(pid: str, body: EventIn, db: Session = Depends(get_db)):
+def create_event(
+    pid: str,
+    body: EventIn,
+    current_user: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _require_patient(pid, current_user, db)
     t = cyc.canon_type((body.type or "").strip().lower())
     if t not in TYPES:
         raise HTTPException(400, f"unknown type {body.type!r}")
@@ -83,7 +113,13 @@ def create_event(pid: str, body: EventIn, db: Session = Depends(get_db)):
 
 
 @router.post("/patients/{pid}/import")
-async def import_file(pid: str, file: UploadFile = File(...)):
+async def import_file(
+    pid: str,
+    file: UploadFile = File(...),
+    current_user: str = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    _require_patient(pid, current_user, db)
     raw = await file.read()
     name = (file.filename or "").lower()
     try:

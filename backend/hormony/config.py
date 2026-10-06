@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     openrouter_model: str = "nvidia/nemotron-3-super-120b-a12b:free"
     today: str = "2026-09-29"
     demo_replay: bool = False
+    auth_secret: str = "change-this-secret-in-env"
+
 
     @property
     def today_date(self):

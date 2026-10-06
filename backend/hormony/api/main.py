@@ -10,6 +10,7 @@ from ..config import settings
 from ..db import db_ok, init_db
 from .routes_analyses import router as analyses_router
 from .routes_events import router as events_router
+from .routes_auth import router as auth_router
 
 log = logging.getLogger("hormony.api")
 
@@ -53,9 +54,9 @@ def create_app() -> FastAPI:
     app = FastAPI(title="Hormony API", lifespan=lifespan)
     app.add_middleware(ErrorsAsJson)
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])  # outermost
+    app.include_router(auth_router)
     app.include_router(events_router)
     app.include_router(analyses_router)
-
     @app.get("/health")
     def health():
         ok = db_ok()
