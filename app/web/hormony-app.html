@@ -495,13 +495,25 @@ table.tbl{width:100%;border-collapse:collapse;font-size:13px}
 @keyframes pop{0%{opacity:0;transform:scale(.92) translateY(10px)}100%{opacity:1;transform:none}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}}
-/* welcome / onboarding (new component) */
+/* welcome / onboarding and report review (new components) */
 .welcome{position:absolute;inset:0;z-index:190;overflow-y:auto;scrollbar-width:none;background:radial-gradient(circle at 50% 22%,#fbf8f3,var(--bg) 70%);opacity:0;visibility:hidden;transition:opacity .45s,visibility 0s .45s}
 .welcome.on{opacity:1;visibility:visible;transition:opacity .45s}
 .wBody{max-width:420px;margin:0 auto;padding:calc(var(--top) + 28px) 22px calc(32px + env(safe-area-inset-bottom));animation:fadeUp .6s var(--ease) both}
 .wOrb{position:relative;width:92px;height:92px;margin:0 auto 18px;display:grid;place-items:center}
 .wOrb::after{content:"";position:absolute;inset:0;border-radius:50%;border:1.5px dashed rgba(90,61,110,.35);animation:spin 14s linear infinite}
 .wProf{display:flex;align-items:center;gap:12px;width:100%;text-align:left}
+.rvRow{display:flex;align-items:center;gap:8px;padding:10px 0;border-bottom:1px solid var(--line);transition:opacity .2s}
+.rvRow:not(.on){opacity:.55}
+.rvTick{width:26px;height:26px;border-radius:8px;border:1.5px solid var(--faint);display:grid;place-items:center;flex:none;transition:all .3s var(--spring)}
+.rvTick .i{width:15px;height:15px;color:#fff;opacity:0;stroke-width:2.4}
+.rvRow.on .rvTick{background:var(--plum);border-color:var(--plum)}
+.rvRow.on .rvTick .i{opacity:1}
+.rvName{flex:1;min-width:0}
+.rvName b{display:block;font-size:14.5px;font-weight:500}
+.rvName span{display:block;font-size:12px;color:var(--muted);margin-top:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rvName em{font-style:normal;font-weight:600;color:#b4432f}
+.inp.rvVal{width:76px;height:40px;padding:0 10px;text-align:right;font-variant-numeric:tabular-nums;flex:none}
+.inp.rvUnit{width:72px;height:40px;padding:0 8px;flex:none}
 .iCard.q .ttl{filter:none}
 </style>
 </head>
@@ -880,6 +892,7 @@ const API={
 };
 function errMsg(e){
   if(!e)return'Something went wrong.';
+  if(e.status===413)return'That file is larger than 15 MB.';
   if(e.status){const t=String(e.detail||e.message).replace(/^\d+\s*/,'').trim();return(t[0]||'').toUpperCase()+t.slice(1,220)}
   return"Can't reach the Hormony server. Check that it's running and that you're on the same network.";
 }
@@ -889,7 +902,7 @@ const SYMCODE={Fatigue:'F',Anxiety:'A',Headache:'H',Bloating:'B',Cramps:'C','Low
 const safeId=id=>String(id).replace(/[^\w-]/g,'');
 function fromApi(a){
   const type=TYPE_IN[a.type];if(!type)return null;
-  const e={id:a.id,d:dayIdx(a.date),type,name:a.name||type,code:a.code||undefined,src:a.source||'',note:a.note||''};
+  const e={id:a.id,d:dayIdx(a.date),type,name:a.name||type,code:a.code||undefined,src:a.source||'',note:a.note||'',ref:a.source_ref||''};
   if(type==='lab'){e.v=a.value;e.u=a.unit||'';e.val=`${a.value} ${e.u}`.trim()}
   else if(type==='sym'){e.sev=a.severity||0;e.val=e.sev+'/10'}
   else if(type==='slp'){e.h=+a.value||0;e.val=e.h.toFixed(1)+' h'}
@@ -942,7 +955,7 @@ async function switchProfile(p){
   S.profile=p;S.source='live';
   store.set('hormony.profile',JSON.stringify({id:p.id,kind:p.kind,name:p.name}));
   Object.assign(S,p.kind==='personal'?personalGame(p.id,isoOf(TODAY),isoOf(TODAY-1)):Object.assign(DEMO_GAME(),{saved:null}));
-  S.analysis=null;S.liveRun=null;S.qsFor=null;S.fresh=null;S.hover=null;S.feedN=12;S.sel=p.kind==='personal'?TODAY:87;G=null;
+  S.analysis=null;S.liveRun=null;S.qsFor=null;S.fresh=null;S.report=null;S.hover=null;S.feedN=12;S.sel=p.kind==='personal'?TODAY:87;G=null;
   if(S.lastAnalysis){try{S.analysis=Object.assign({id:S.lastAnalysis},await API.get(`/analyses/${encodeURIComponent(S.lastAnalysis)}`))}
     catch(err){S.lastAnalysis=null;S.unlocked=false}}
   renderHome();
@@ -1270,7 +1283,7 @@ function renderHormones(){
   const view=S.hview||'chart';
   $$('#hormoneView button').forEach(b=>{b.classList.toggle('on',b.dataset.v===view);b.onclick=()=>{S.hview=b.dataset.v;buzz(4);renderHormones()}});
   const labs=E.filter(e=>e.type==='lab').sort((a,b)=>a.d-b.d);
-  if(!labs.length){$('#hormones').innerHTML=`<div class="small">No lab results in the last 90 days yet. Add a lab value with <b style="color:var(--ink)">+</b> and every value shows up here with its date and cycle day.</div>`;return}
+  if(!labs.length){$('#hormones').innerHTML=`<div class="small">No lab results in the last 90 days yet. Add a report with <b style="color:var(--ink)">+</b> and every value shows up here with its date and cycle day.</div>`;return}
   if(view==='table'){$('#hormones').innerHTML=`<table class="tbl"><thead><tr><th>Date</th><th>Day</th><th>Test</th><th style="text-align:right">Value</th></tr></thead><tbody>${labs.map(e=>`<tr><td>${fmt(e.d)}</td><td>${cd(e.d)<1?'—':cd(e.d)}</td><td>${esc(e.name)}</td><td style="text-align:right">${e.v} ${esc(e.u)}</td></tr>`).join('')}</tbody></table>`;return}
   const months=[];for(let d=0;d<=TODAY;d++){const dt=dateOf(d);if(dt.getDate()===1||(d===0&&dt.getDate()<=20))months.push([d,MON[dt.getMonth()]])}
   const ml=CYCLE_N-7;   // mid-luteal day (day 21 of a 28-day cycle): where progesterone is usually compared
@@ -1300,6 +1313,7 @@ function openEvent(id){
   const e=E.find(x=>x.id===id);if(!e)return;const c=cd(e.d),t=T[e.type];
   const H=(S.analysis&&S.analysis.hypotheses)||(S.liveRun&&S.liveRun.hyps);
   const used=H?AG.filter(a=>{const h=H[AG_OUT[a.k]]||H[a.k];return h&&(h.evidence_ids||[]).includes(id)}):isPersonal()?[]:agentDefs(stats()).filter(a=>a.ev.includes(id));
+  const rep=/^report:([0-9a-f]{16,64})(?:#p(\d+))?$/i.exec(e.ref||'');
   const sm=s=>`<small style="font-size:16px;color:var(--muted);font-weight:500"> ${s}</small>`;
   const big=e.type==='lab'?`${e.v}${sm(esc(e.u))}`:e.type==='sym'?`${e.sev}${sm('/ 10')}`:e.type==='slp'?fmtH(e.h):esc(e.val);
   openSheet(`<div class="row" style="gap:14px"><div class="bub" style="width:56px;height:56px;border-radius:19px;background:${t.hex}">${ic(t.icon)}</div><div><div class="eyebrow">${t.label}</div><div class="h2">${esc(e.name)}</div></div></div>
@@ -1308,7 +1322,13 @@ function openEvent(id){
   <div class="kv"><div><span>Date</span><b>${fmt(e.d)}, ${dateOf(e.d).getFullYear()}</b></div><div><span>Cycle</span><b>${c<1?'Before first logged period':`Day ${c} · ${phase(c)}`}</b></div><div><span>Source</span><b>${esc(e.src)}</b></div><div><span>Record ID</span><b style="font-family:ui-monospace,Menlo,monospace;font-size:13px">${esc(e.id)}</b></div></div>
   <div class="eyebrow" style="margin:18px 0 8px">Cited as evidence by</div>
   <div class="evChips" style="margin:0">${used.length?used.map(a=>`<span class="evChip"><span class="sw" style="background:${T[a.k].hex}"></span>${a.name}</span>`).join(''):'<span class="small">Not cited by an agent yet. It still counts toward pattern strength.</span>'}</div>
+  ${rep&&API.on?`<button class="btn ghost block mt16" onclick="openReport('${rep[1]}',${+rep[2]||1})">${ic('doc')}Open the original report${rep[2]?` · page ${+rep[2]}`:''}</button>`:''}
   <button class="btn ghost block mt16" onclick="closeSheet()">Done</button>`);
+}
+function openReport(id,page){
+  const url=API.url(`/patients/${encodeURIComponent(PID)}/reports/${encodeURIComponent(id)}/file`)+(page>1?`#page=${page}`:'');
+  if(window.ReactNativeWebView)return bridge('open',{url});
+  window.open(url,'_blank','noopener');
 }
 
 /* ---------- logging ---------- */
@@ -1317,7 +1337,7 @@ const sevFace=s=>s<=2?'🙂':s<=4?'😕':s<=6?'😣':s<=8?'😫':'🥵';
 let uidN=0;
 function openLog(){
   openSheet(`<div class="eyebrow">Add to your story</div><div class="h2" style="margin-top:4px">What do you want to <em>log?</em></div><p class="small" style="margin-top:6px">Every record becomes dated evidence the agents can reason over.</p>
-  <div class="tiles">${[['sym','Symptom','severity'],['slp','Sleep','hours'],['cyc','Period','flow'],['lab','Lab value','value + unit'],['med','Medication','change'],['scan','Scan report','auto-extract']].map(([k,n,s])=>{const sc=k==='scan';return`<button class="tile" onclick="logForm('${k}')"><span class="bub${sc?' iri':''}" style="${sc?'':'background:'+T[k].hex}">${ic(sc?'scan':T[k].icon)}</span>${n}<small>${s}</small></button>`}).join('')}</div>`);
+  <div class="tiles">${[['sym','Symptom','severity'],['slp','Sleep','hours'],['cyc','Period','flow'],['lab','Lab value','value + unit'],['med','Medication','change'],['scan',API.on?'Lab report':'Scan report',API.on?'PDF or photo':'auto-extract']].map(([k,n,s])=>{const sc=k==='scan';return`<button class="tile" onclick="logForm('${k}')"><span class="bub${sc?' iri':''}" style="${sc?'':'background:'+T[k].hex}">${ic(sc?'scan':T[k].icon)}</span>${n}<small>${s}</small></button>`}).join('')}</div>`);
 }
 function logForm(k){
   const head=(title,sub)=>`<div class="row" style="gap:12px"><button class="backBtn" onclick="swapSheetLog()" aria-label="Back">${ic('back')}</button><div><div class="eyebrow">${sub}</div><div class="h2">${title}</div></div></div>`;
@@ -1329,7 +1349,7 @@ function logForm(k){
   if(k==='cyc'){S.lf={name:'Spotting'};swapSheet(head('Any bleeding today?','Cycle')+`<div class="chips mt16">${['Spotting','Light flow','Medium flow','Heavy flow'].map((t,i)=>`<button class="chip ${i?'':'sel'}" onclick="lfSel(this,'${t}')">${t}</button>`).join('')}</div><p class="small mt12">Hormony uses this to refine your cycle-phase estimate.</p><button class="btn primary block mt16" onclick="saveLog('cyc',this)">Add to timeline · +10 XP</button>`)}
   if(k==='lab'){S.lf={i:0};swapSheet(head('Add a lab value','Lab result')+`<div class="chips mt16">${ANALYTES.map((a,i)=>`<button class="chip ${i?'':'sel'}" onclick="lfAn(this,${i})">${a[0]}</button>`).join('')}</div><div class="field"><label id="lfUnit">Value · ${ANALYTES[0][2]}</label><input class="inp" id="lfVal" type="number" inputmode="decimal" step="any" placeholder="e.g. ${ANALYTES[0][3]}"></div><button class="btn primary block mt16" onclick="saveLog('lab',this)">Add to timeline · +25 XP</button>`)}
   if(k==='med'){S.lf={chg:'Started'};swapSheet(head('Medication change','Medication')+`<div class="field"><label>Medication</label><input class="inp" id="lfMed" placeholder="e.g. Vitamin D 1000 IU" maxlength="60"></div><div class="chips mt12">${['Started','Stopped','Dose change','Timing change'].map((t,i)=>`<button class="chip ${i?'':'sel'}" onclick="lfSel(this,'${t}','chg')">${t}</button>`).join('')}</div><button class="btn primary block mt16" onclick="saveLog('med',this)">Add to timeline · +10 XP</button>`)}
-  if(k==='scan')isPersonal()?logForm('lab'):scanFlow();   // the scripted scan is demo-only: never add made-up values to a real record
+  if(k==='scan')API.on?uploadFlow():scanFlow();
 }
 function swapSheetLog(){S.scanRun++;const b=$('#sheet .sheetBody');if(b)b.remove();openLog()}
 function lfPick(b,t){$$('#lfChips .chip').forEach(c=>c.classList.remove('on'));b.classList.add('on');S.lf.name=t;buzz(4)}
@@ -1378,10 +1398,82 @@ function saveScan(){
   if(API.on)Promise.all(S.scanVals.map(([name,code,v,u])=>persist({type:'lab',name,code,value:v,unit:u,date:isoOf(TODAY),source:'Scanned lab report'}))).then(syncLedger);
   closeSheet();xp(40);confetti(90,.5,.5);toast('3 lab values added');earn('scan');afterData();
 }
-/* ---------- names of the models a profile's data goes to ---------- */
+/* ---------- real lab reports: pick → read → review → confirm (live mode) ---------- */
 function engineLabel(id){
   if(!id||/^misconfigured/.test(id))return null;if(id==='demo')return'the built-in rules engine';
   const[prov,...r]=String(id).split(':'),m=r.join(':');return prov==='openrouter'?`${m} via OpenRouter`:prov==='anthropic'?`${m} (Anthropic)`:m||prov;
+}
+function readerNote(){
+  const h=S.health||{},t=h.llm==='demo'?'built-in rules (no AI model)':engineLabel(h.llm)||'the server',v=engineLabel(h.vision);
+  return`Text PDFs are read by <b style="color:var(--ink)">${esc(t)}</b>. ${v?`Photos and scanned pages are read by <b style="color:var(--ink)">${esc(v)}</b>.`:'Photos and scanned pages need a vision model on the server.'} Nothing is saved until you've checked the values.`;
+}
+const rpHead=(t,back='uploadFlow()')=>`<div class="row" style="gap:12px"><button class="backBtn" onclick="${back}" aria-label="Back">${ic('back')}</button><div><div class="eyebrow">Lab report</div><div class="h2">${t}</div></div></div>`;
+function uploadFlow(){
+  S.scanRun++;
+  swapSheet(rpHead('Add a <em>lab report</em>','swapSheetLog()')+`<div class="tiles" style="grid-template-columns:1fr 1fr"><button class="tile" onclick="pickReport(false)"><span class="bub" style="background:#16917f">${ic('doc')}</span>PDF or image<small>from your files</small></button><button class="tile" onclick="pickReport(true)"><span class="bub iri">${ic('scan')}</span>Take a photo<small>use the camera</small></button></div>
+  <div class="note mt16">${ic('shield')}<div>${readerNote()}</div></div>`);
+}
+function pickReport(camera){
+  $$('input.rpPick').forEach(x=>x.remove());
+  const inp=document.createElement('input');inp.type='file';inp.className='rpPick';inp.style.display='none';
+  inp.accept=camera?'image/*':'application/pdf,image/*';if(camera)inp.setAttribute('capture','environment');
+  inp.onchange=()=>{const f=inp.files&&inp.files[0];inp.remove();if(f)readReport(f)};
+  document.body.appendChild(inp);inp.click();
+}
+async function readReport(f){
+  if(f.size>15*1024*1024)return toast('That file is larger than 15 MB','help');
+  const my=++S.scanRun;
+  swapSheet(rpHead('Reading your <em>lab report</em>')+`<div class="scanDoc"><div class="sdHead"><b>${esc(f.name||'Photo')}</b><span>${Math.max(1,Math.round(f.size/1024))} KB</span></div>
+  ${['Collection date','Tests and values','Units and reference ranges'].map((t,i)=>`<div class="sdRow faint" id="sd${i}"><span>${t}</span><span class="dots2"></span><b>…</b></div>`).join('')}<div class="laser"></div></div>
+  <div class="small mt12" id="scanMsg" role="status">Uploading…</div>`);
+  const msgs=['Uploading…','Reading the pages…','Finding dates, tests and units…','Checking reference ranges…','Still reading. Photos can take up to a minute…'];
+  let k=0;const tick=setInterval(()=>{if(my!==S.scanRun)return clearInterval(tick);k=Math.min(k+1,msgs.length-1);const m=$('#scanMsg');if(m)m.textContent=msgs[k];
+    const r=$('#sd'+Math.min(k-1,2));if(r){r.classList.add('hit');r.classList.remove('faint')}buzz(4)},RM?400:2200);
+  const fd=new FormData();fd.append('file',f,f.name||'photo.jpg');
+  let j;
+  try{j=await API.req(`/patients/${encodeURIComponent(PID)}/reports`,{method:'POST',body:fd})}
+  catch(err){clearInterval(tick);if(my!==S.scanRun)return;
+    swapSheet(rpHead("Couldn't read the <em>report</em>")+`<div class="note mt16">${ic('alert')}<div>${esc(errMsg(err))}</div></div><button class="btn primary block mt16" onclick="uploadFlow()">Try another file</button>`);return}
+  clearInterval(tick);if(my!==S.scanRun)return;
+  S.report=Object.assign(j,{sel:new Set(j.rows.map((_,i)=>i))});
+  renderReview();buzz([8,30,8]);
+}
+const METHOD={text:'Read from the PDF text',vision:'Read from the image',rules:'Read by pattern matching'};
+const FLAG={H:'high',L:'low',HH:'very high',LL:'very low',A:'abnormal'};
+const rvLabel=n=>n?`Add ${n} value${n===1?'':'s'} · +40 XP`:'Select at least one value';
+function renderReview(){
+  const R=S.report,n=R.sel.size;
+  swapSheet(rpHead('Is this <em>right?</em>')+`<div class="note mt16">${ic('doc')}<div><b style="color:var(--ink)">${esc(R.filename)}</b>${R.lab_name?` · ${esc(R.lab_name)}`:''}<br>${METHOD[R.method]||'Read'} · ${R.pages} page${R.pages===1?'':'s'}</div></div>
+  ${R.duplicate?`<div class="note">${ic('help')}<div>You've added this file before. Values already in your timeline are skipped.</div></div>`:''}
+  ${(R.warnings||[]).map(w=>`<div class="note">${ic('alert')}<div>${esc(w)}</div></div>`).join('')}
+  ${R.rows.length?`<div class="field"><label for="rvDate">Collection date</label><input class="inp" id="rvDate" type="date" value="${esc(R.collected_date||'')}" max="${isoOf(TODAY)}"></div>
+  <div class="eyebrow" style="margin:18px 0 2px">Results · untick or edit anything that's off</div>
+  <div id="rvRows">${R.rows.map((r,i)=>`<div class="rvRow ${R.sel.has(i)?'on':''}" id="rv${i}"><button class="rvTick" onclick="rvToggle(${i})" role="checkbox" aria-checked="${R.sel.has(i)}" aria-label="Include ${esc(r.analyte)}">${ic('check')}</button>
+    <div class="rvName"><b>${esc(r.analyte)}</b><span>${[r.printed_name&&r.printed_name!==r.analyte?esc(r.printed_name):'',r.reference_range?'ref '+esc(r.reference_range):'',r.flag?`<em>${esc(FLAG[r.flag]||r.flag)}</em>`:'',R.pages>1?'p. '+(+r.page||1):''].filter(Boolean).join(' · ')||'&nbsp;'}</span></div>
+    <input class="inp rvVal" id="rvV${i}" inputmode="decimal" value="${esc(r.value)}" aria-label="${esc(r.analyte)} value"><input class="inp rvUnit" id="rvU${i}" value="${esc(r.unit||'')}" maxlength="20" placeholder="unit" aria-label="${esc(r.analyte)} unit"></div>`).join('')}</div>
+  <div class="small" id="rvErr" role="alert" style="color:#b4432f;min-height:18px;margin-top:8px"></div>
+  <button class="btn primary block mt8" id="rvGo" onclick="confirmReport(this)"${n?'':' disabled'}>${ic('check')}${rvLabel(n)}</button>`
+  :`<button class="btn primary block mt16" onclick="uploadFlow()">Try another file</button>`}`);
+}
+function rvToggle(i){
+  const R=S.report;R.sel.has(i)?R.sel.delete(i):R.sel.add(i);
+  const row=$('#rv'+i);row.classList.toggle('on',R.sel.has(i));row.querySelector('.rvTick').setAttribute('aria-checked',R.sel.has(i));
+  const b=$('#rvGo');b.disabled=!R.sel.size;b.innerHTML=ic('check')+rvLabel(R.sel.size);buzz(4);
+}
+async function confirmReport(btn){
+  const R=S.report,date=$('#rvDate').value,err=$('#rvErr'),rows=[];err.textContent='';
+  if(!date){err.textContent='Set the collection date first.';$('#rvDate').focus();return}
+  for(const i of[...R.sel].sort((a,b)=>a-b)){const r=R.rows[i],v=parseFloat(String($('#rvV'+i).value).replace(',','.'));
+    if(!isFinite(v)){err.textContent=`${r.analyte}: enter a number.`;$('#rvV'+i).focus();return}
+    rows.push({analyte:r.analyte,code:r.code||null,value:v,unit:$('#rvU'+i).value.trim(),date,reference_range:r.reference_range||'',flag:r.flag||'',page:+r.page||1})}
+  btn.disabled=true;btn.textContent='Saving…';
+  let j;
+  try{j=await API.post(`/patients/${encodeURIComponent(PID)}/reports/${encodeURIComponent(R.report_id)}/confirm`,{rows})}
+  catch(e){err.textContent=errMsg(e);btn.disabled=false;btn.innerHTML=ic('check')+rvLabel(R.sel.size);return}
+  closeSheet();S.report=null;
+  toast(j.added?`${j.added} lab value${j.added===1?'':'s'} added${j.skipped?` · ${j.skipped} already there`:''}${dayIdx(date)<0?' · older than 90 days':''}`:'Already in your timeline','flask');
+  if(j.added){xp(40);confetti(90,.5,.5);earn('scan');earn('lab')}
+  await syncLedger();
 }
 function afterData(){renderRing();renderStats();if(isPersonal())renderUnlock();if(S.current==='timeline')renderTimeline()}
 
@@ -1770,7 +1862,7 @@ function renderInsightsPersonal(){
   const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0],tn=top?top[1]:0,lm=Math.max(0,...Object.values(lc));
   const next=[['Sleep × cycle','Does my sleep change across my cycle?',Math.min(100,Math.round(sl/14*100)),sl>=14?'Ready to ask':`Log ${14-sl} more night${14-sl===1?'':'s'} of sleep`,'slp'],
     [top?top[0]+' timing':'Symptom timing',top?`Does my ${top[0].toLowerCase()} cluster at one point in my cycle?`:'Do my symptoms cluster at one point in my cycle?',Math.min(100,Math.round(tn/6*100)),tn>=6?'Ready to ask':`${6-tn} more symptom log${6-tn===1?'':'s'} needed`,'sym'],
-    ['Lab trends','How are my lab results changing over time?',Math.min(100,lm*50),lm>=2?'Ready to ask':lm?'One more result of the same test':'Add a lab value','lab']];
+    ['Lab trends','How are my lab results changing over time?',Math.min(100,lm*50),lm>=2?'Ready to ask':lm?'One more result of the same test':'Add a lab report','scan']];
   $('#insCount').textContent=`${R?1:0} of 4 unlocked`;
   let h=R?`<div class="card tap iCard unlocked iriCard" onclick="push('insight')"><div class="row between"><span class="pill pearl">${ic('sparkle',lk)}Unlocked</span><span class="small">${esc(R.confidence_word||'')} confidence</span></div><div class="ttl">${esc(R.headline||'Your latest analysis')}</div><div class="row" style="gap:6px;flex-wrap:wrap">${AG.map(a=>`<span class="pill"><span class="sw" style="background:${T[a.k].hex}"></span>${a.name}</span>`).join('')}</div></div>`
     :`<div class="card tap iCard q" onclick="openAsk()"><div class="row between"><span class="pill">${ic('lock',lk)}${rd.pct}% there</span><span class="small">Your first insight</span></div><div class="ttl">Your first insight appears after your first analysis.</div><div class="meter"><i style="width:${rd.pct}%"></i></div><div class="small mt8">Ask the agents a question →</div></div>`;
@@ -1954,21 +2046,22 @@ function renderMe(){
   <div class="card" style="padding-top:8px;padding-bottom:12px">${AG.map(a=>`<div class="setRow">${agAv(a,40)}<div><div class="t">${a.name}</div><div class="s">${a.reads}</div></div><button class="tog ${S.paused.has(a.k)?'':'on'}" style="--c:${T[a.k].hex}" onclick="toggleAgent('${a.k}',this)" aria-label="Allow ${a.name}" aria-pressed="${!S.paused.has(a.k)}"><i></i></button></div>`).join('')}</div>
   <div class="secTitle"><div class="h3">Data sources</div></div>
   <div class="card" style="padding-top:8px">${(isPersonal()?sourcesPersonal(st):[['lab','Lab reports',`${st.labN} values · PDF + scans`],['sym','Daily check-ins',`${st.symN} symptom logs`],['cyc','Cycle history','4 cycles · manual'],['slp','Sleep app',`${st.slN} nights · CSV import`],['med','Medications',`${st.medN} change${st.medN>1?'s':''} · manual`]]).map(([k,t,s])=>`<div class="setRow"><div class="bub" style="background:${T[k].hex}">${ic(T[k].icon)}</div><div><div class="t">${t}</div><div class="s">${s}</div></div><span class="synced">Synced</span></div>`).join('')}
-  <button class="btn ghost block mt12" onclick="pickImport()">${ic('upload')}Import CSV / JSON</button></div>
+  ${API.on?`<button class="btn ghost block mt12" onclick="openLog();setTimeout(()=>logForm('scan'),80)">${ic('doc')}Upload a lab report</button>
+  `:''}<button class="btn ghost block mt12" onclick="pickImport()">${ic('upload')}Import CSV / JSON</button></div>
   <div class="card pearlCard"><div class="row" style="align-items:flex-start"><div class="bub" style="background:var(--lab)">${ic('shield')}</div><div><div class="h3">Private by design</div><div class="small" style="margin-top:3px">${API.on?privacyText():'Stored on this device. Agents only see the records scoped to your question, and every conclusion keeps a link back to its source.'}</div></div></div></div>
   ${API.base?'':`<button class="btn ghost block" onclick="location.reload()">Reset demo</button>`}`;
   S.fresh=null;
 }
 function sourcesPersonal(st){
-  const cyc=E.filter(e=>e.type==='cyc'&&/period started/i.test(e.name)).length;
-  return[['lab','Lab results',`${st.labN} value${st.labN===1?'':'s'}`],['sym','Daily check-ins',`${st.symN} symptom log${st.symN===1?'':'s'}`],
+  const cyc=E.filter(e=>e.type==='cyc'&&/period started/i.test(e.name)).length,reps=new Set(E.filter(e=>/^report:/.test(e.ref||'')).map(e=>e.ref.split('#')[0])).size;
+  return[['lab','Lab reports',`${st.labN} value${st.labN===1?'':'s'}${reps?` · ${reps} report${reps===1?'':'s'}`:''}`],['sym','Daily check-ins',`${st.symN} symptom log${st.symN===1?'':'s'}`],
     ['cyc','Cycle history',`${cyc} period${cyc===1?'':'s'} logged · ${CYCLE_N}-day cycle`],['slp','Sleep',`${st.slN} night${st.slN===1?'':'s'}`],['med','Medications',`${st.medN} change${st.medN===1?'':'s'}`]];
 }
 const recCount=p=>Object.values(p.counts||{}).reduce((a,b)=>a+b,0);
 function privacyText(){
-  const host=(API.base.match(/^https?:\/\/([^/]+)/)||[0,API.base])[1],h=S.health||{},llm=engineLabel(h.llm);
+  const host=(API.base.match(/^https?:\/\/([^/]+)/)||[0,API.base])[1],h=S.health||{},llm=engineLabel(h.llm),vis=engineLabel(h.vision);
   const why=h.llm==='demo'?'the built-in rules engine, so nothing leaves that server':llm?`<b style="color:var(--ink)">${esc(llm)}</b>`:'the reasoning engine';
-  return`Your records are stored on the Hormony server at <b style="color:var(--ink)">${esc(host)}</b>. When you ask a question, only the records scoped to it are analysed by ${why}. Every conclusion keeps a link back to its source.`;
+  return`Your records are stored on the Hormony server at <b style="color:var(--ink)">${esc(host)}</b>. When you ask a question, only the records scoped to it are analysed by ${why}.${vis?` Photographed reports are read by <b style="color:var(--ink)">${esc(vis)}</b>.`:''} Every conclusion keeps a link back to its source.`;
 }
 function profilesCard(){
   if(!API.on)return'';

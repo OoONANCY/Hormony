@@ -7,9 +7,26 @@
     "scheme": "hormony",
     "userInterfaceStyle": "light",
     "backgroundColor": "#F6F2EC",
-    "plugins": ["expo-router"],
-    "ios": { "supportsTablet": false },
-    "android": { "adaptiveIcon": { "backgroundColor": "#F6F2EC" } },
-    "web": { "bundler": "metro" }
+    "plugins": [
+      "expo-router"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Hormony uses the camera to photograph a lab report so its results can be read.",
+        "NSPhotoLibraryUsageDescription": "Hormony opens a lab report image you choose so its results can be read."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F6F2EC"
+      },
+      "permissions": [
+        "CAMERA"
+      ]
+    },
+    "web": {
+      "bundler": "metro"
+    }
   }
 }

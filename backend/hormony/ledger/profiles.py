@@ -1,6 +1,7 @@
 """Profiles: the demo profile keeps a frozen date; personal profiles start empty and use the real date."""
 from __future__ import annotations
 
+import os
 import re
 import secrets
 from datetime import date as Date, timedelta
@@ -8,7 +9,7 @@ from typing import List, Optional
 
 from ..config import settings
 from ..db import SessionLocal
-from ..models import AnalysisRun, Event, Profile
+from ..models import AnalysisRun, Event, Profile, ReportFile
 
 MAX_ANCHOR_DAYS = 120   # a last-period date older than this can't anchor the current cycle
 
@@ -79,7 +80,7 @@ def create_profile(name: str, last_period_start: Date, cycle_length: int) -> Pro
 
 
 def delete_profile(pid: str) -> None:
-    """Remove a personal profile and everything that belongs to it (records and analyses)."""
+    """Remove a personal profile and everything that belongs to it (records, analyses, stored reports)."""
     db = SessionLocal()
     try:
         p = db.query(Profile).filter(Profile.id == pid).first()
@@ -87,7 +88,12 @@ def delete_profile(pid: str) -> None:
             raise LookupError(pid)
         if p.kind != "personal":
             raise ValueError("the demo profile can't be deleted")
-        for model in (Event, AnalysisRun):
+        for f in db.query(ReportFile).filter(ReportFile.patient_id == pid).all():
+            try:
+                os.remove(os.path.join(settings.uploads_dir, f.path))
+            except FileNotFoundError:
+                pass
+        for model in (Event, AnalysisRun, ReportFile):
             db.query(model).filter(model.patient_id == pid).delete()
         db.delete(p)
         db.commit()

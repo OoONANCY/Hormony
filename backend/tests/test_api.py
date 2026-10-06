@@ -81,7 +81,14 @@ def test_import_dedupes_against_the_seed_and_is_idempotent(client):
 
 
 def test_health_reports_db_and_llm(client):
-    assert client.get("/health").json() == {"ok": True, "db": "ok", "llm": "demo"}
+    assert client.get("/health").json() == {"ok": True, "db": "ok", "llm": "demo", "vision": None}
+
+
+def test_health_names_the_model_that_reads_photos(client, monkeypatch):
+    """The app tells people which model will see a photographed report before they upload one."""
+    monkeypatch.setattr(settings, "openrouter_api_key", "sk-test")
+    monkeypatch.setattr(settings, "vision_model", "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free")
+    assert client.get("/health").json()["vision"] == "openrouter:nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"
 
 
 def test_server_errors_still_carry_cors_headers(seeded):

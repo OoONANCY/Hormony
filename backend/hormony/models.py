@@ -33,6 +33,20 @@ class Profile(Base):
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
 
 
+class ReportFile(Base):
+    __tablename__ = "report_files"
+    __table_args__ = (PrimaryKeyConstraint("patient_id", "id"),)  # the same file can belong to more than one person
+    id: Mapped[str] = mapped_column(String(64))                          # sha256 of the file
+    patient_id: Mapped[str] = mapped_column(String(40), index=True)
+    filename: Mapped[str] = mapped_column(String(200))
+    content_type: Mapped[str] = mapped_column(String(80))
+    path: Mapped[str] = mapped_column(String(300))
+    pages: Mapped[int] = mapped_column(Integer, default=1)
+    method: Mapped[str] = mapped_column(String(10), default="")          # text | vision | rules
+    extraction: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True, default=None)
+    created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
+
+
 class AnalysisRun(Base):
     __tablename__ = "analysis_runs"
     id: Mapped[str] = mapped_column(String(36), primary_key=True)

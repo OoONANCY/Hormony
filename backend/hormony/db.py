@@ -39,10 +39,11 @@ def get_db():
 
 
 def migrate_event_keys(eng) -> None:
-    """Earlier builds keyed records by `id` alone, so two people logging the same thing on the same day collided.
-    Move the primary key to (patient_id, id), keeping every row."""
-    from .models import Event
-    _rekey(eng, Event.__table__)
+    """Earlier builds keyed records and report files by `id` alone, so two people logging the same thing on the
+    same day (or uploading the same file) collided. Move those primary keys to (patient_id, id), keeping every row."""
+    from .models import Event, ReportFile
+    for model in (Event, ReportFile):
+        _rekey(eng, model.__table__)
 
 
 def _rekey(eng, table) -> None:

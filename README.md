@@ -15,7 +15,8 @@ A privacy-conscious app that puts your hormone labs, symptoms, cycle, sleep and 
 | **Hypothesis graph** | Draggable graph of associated factors. Every link cites ledger records; links nobody assessed carry no confidence |
 | **Clinician brief** | One-page summary with observed patterns, interpretation and questions to ask, ready to copy or share |
 | **Profiles** | Start your own record (it starts empty, on the real date) or explore the fictional demo. Switch between profiles, or delete your data, from Me |
-| **Me** | Profiles, badges, per-agent access toggles (consent), data sources, CSV/JSON import |
+| **Lab reports** | Upload a PDF or take a photo. Hormony reads the results, you check and correct them, and each saved value links back to the original file |
+| **Me** | Profiles, badges, per-agent access toggles (consent), data sources, report upload, CSV/JSON import |
 
 ## Architecture
 
@@ -25,7 +26,8 @@ Expo app (iOS / Android / web)
         │  REST + Server-Sent Events
 FastAPI backend (backend/)
   ├─ Profiles: a frozen-date demo + personal records on the real date, each with its own cycle length
-  ├─ Evidence ledger (SQLite or PostgreSQL) ── CSV/JSON import with provenance
+  ├─ Evidence ledger (SQLite or PostgreSQL) ── CSV/JSON import + lab reports, all with provenance
+  ├─ Report reader: PDF text → text LLM (or rules) · photos/scans → vision LLM · you confirm before saving
   ├─ compute_stats(): every number, date and analyte, computed in Python
   └─ LangGraph workflow
         scope → [Lab | Symptom | Cycle] in parallel → discordance → debate (if conflict) → critic → report
@@ -48,8 +50,10 @@ backend/                 FastAPI + LangGraph
   hormony/agents/        LLM providers, prompts, graph nodes, discordance, provenance guard
   hormony/analysis/      Deterministic facts + stats
   hormony/ledger/        Cycle maths, profiles, ledger access, importer, demo seed
+  hormony/reports/       Lab-report reading: PDF text, page images, analyte names, rule-based fallback
   hormony/outputs/       Report, why-chain, hypothesis graph, clinician brief
-  hormony/api/           HTTP routes (profiles, events, analyses + SSE)
+  hormony/api/           HTTP routes (profiles, events, reports, analyses + SSE)
+  uploads/               Original uploaded reports, one folder per profile (gitignored: personal health data)
   sample_data/           Example CSV + recorded demo run (for replay mode)
   tests/                 Offline test suite
 ```
@@ -79,7 +83,8 @@ Run these from inside `backend/` (that's where `.env` is read). Check it:
 
 ```bash
 curl localhost:8000/health
-# {"ok": true, "db": "ok", "llm": "openrouter:nvidia/nemotron-3-super-120b-a12b:free"}
+# {"ok": true, "db": "ok", "llm": "openrouter:nvidia/nemotron-3-super-120b-a12b:free",
+#  "vision": "openrouter:nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free"}
 ```
 
 Existing databases are upgraded in place when the backend starts (no data is lost).
@@ -113,17 +118,19 @@ Set these in `backend/.env`. Real environment variables override the file.
 | **OpenRouter** (e.g. NVIDIA Nemotron) | `OPENROUTER_API_KEY=sk-or-...` · optional `HORMONY_OPENROUTER_MODEL` (default `nvidia/nemotron-3-super-120b-a12b:free`) |
 | **Anthropic** | `ANTHROPIC_API_KEY=...` (or `ant auth login` + `HORMONY_LLM=anthropic`) · optional `HORMONY_MODEL` (default `claude-opus-5`) |
 | **Offline demo** | `HORMONY_LLM=demo` (the default when no key is set). Rule-based and built from your facts; no network calls |
+| **Photos of reports** | `HORMONY_VISION_MODEL` (default `nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free`), used through your `OPENROUTER_API_KEY`. Without a key, text PDFs are still read (by rules), but photos and scanned PDFs are refused with a clear message |
 
 - **Automatic choice:** with `HORMONY_LLM` empty, the provider is picked from your keys: OpenRouter first, then Anthropic, then demo.
 - **No silent fallback:** if the configured provider is broken (missing or invalid key, no credits), `POST /analyses` returns 503 with the reason. It never quietly switches to demo answers.
 - **Model compatibility:** OpenRouter models with strict JSON-schema support get it. Others get the schema in the prompt, plus validation and one repair attempt.
 - **Free-tier limits:** free OpenRouter models are rate-limited, and each analysis makes 7 calls. If an agent shows "Unavailable", wait a minute or use a paid model (drop `:free`).
-- **Privacy:** on free models, prompts (which contain your health records) may be logged by the serving provider. For real data, use a provider and model that don't retain prompts. The app's Me screen and setup screen name the models in use.
+- **Privacy:** on free models, prompts (which contain your health records, and the report pages you upload) may be logged by the serving provider. For real data, use a provider and model that don't retain prompts. The app's Me screen and setup screen name the models in use.
 
 ## Your record and the demo
 
 - **Your own record** starts empty. Setup asks for three things: a name, the day your last period started (within the last 120 days), and your usual cycle length (21–45 days). It runs on the real date, and cycle phases and the late-luteal window follow your cycle length. XP, streaks and badges start at zero and are kept per profile on that phone.
-- **Delete my data** (Me) removes the profile's records and analyses from the server.
+- **Lab reports:** + → Lab report, or Me → Upload a lab report. Pick a PDF or image, or take a photo. Hormony shows what it read: you can untick rows, fix values, units or the collection date, and nothing is saved until you confirm. Each saved value's source is `Lab report: <file>`, and its record sheet has **Open the original report**. Uploading the same file again is detected. Files are stored under `backend/uploads/<profile>/`.
+- **Delete my data** (Me) removes the profile's records, analyses and uploaded files from the server.
 
 ## Demo data and modes
 
@@ -142,9 +149,12 @@ Set these in `backend/.env`. Real environment variables override the file.
 
 | Method | Path | |
 |---|---|---|
-| GET | `/health` | Database status + active LLM provider |
+| GET | `/health` | Database status, active LLM provider and the vision model (or `null`) |
 | GET / POST | `/profiles` | List profiles, or create one: `{name, last_period_start, cycle_length}` |
 | GET / DELETE | `/profiles/{id}` | One profile with record counts, or delete a personal profile and all its data |
+| POST | `/patients/{id}/reports` | Upload a PDF or image (≤ 15 MB). Returns the extracted rows for review; nothing is saved yet |
+| POST | `/patients/{id}/reports/{report}/confirm` | `{rows: [...]}`, the reviewed rows. Saves them as lab records linked to the file |
+| GET | `/patients/{id}/reports/{report}/file` | The original uploaded file |
 | GET | `/patients/{id}/timeline?days=91&types=lab,symptom` | Events with cycle day and phase, plus cycle starts |
 | GET | `/patients/{id}/summary` | Counts per type |
 | POST | `/patients/{id}/events` | Add one record (check-ins, manual logs) |
@@ -170,12 +180,12 @@ cd app && yarn test                                  # bundles the UI + TypeScri
 | "Project is incompatible with this version of Expo Go" | Update Expo Go (the project uses SDK 57) |
 | `/health` shows `misconfigured: ...` | Fix the key or provider named in the message in `backend/.env`, then restart the backend |
 | An agent shows "Unavailable" | Usually a provider rate limit; the other agents and the critic still finish |
+| A photo of a report is refused | Photos and scanned PDFs need a vision model: set `OPENROUTER_API_KEY` (and optionally `HORMONY_VISION_MODEL`) and restart the backend. HEIC images can't be read; share the photo as JPEG |
 | Changes to `app/web/hormony-app.html` don't appear | Run `yarn build:web` (it also runs automatically on `yarn start`) and reload the app |
 
 ## Roadmap
 
 Next up:
-- Real lab-report reading: PDF or photo, then extracted values you confirm, with provenance back to the file.
 - Authentication, so a profile belongs to an account instead of a device.
 - Reminders for check-ins and for experiments the critic suggests.
 
