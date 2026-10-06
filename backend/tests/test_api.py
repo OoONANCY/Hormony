@@ -136,3 +136,44 @@ def test_golden_run_ships_a_complete_event_log():
     golden = json.load(open(path))
     assert golden["event_log"][-1]["type"] == "done"
     assert {"report", "graph", "brief"} <= set(golden["result"])
+
+def test_wearable_data_can_be_added_and_read(client):
+    payload = {
+        "date": "2026-10-06",
+        "sleep_hours": 7.2,
+        "resting_heart_rate": 61,
+        "hrv": 42,
+        "steps": 8240,
+        "body_temperature": 36.5,
+        "source": "health_connect",
+    }
+
+    response = client.post(
+        "/patients/nancy/wearable",
+        json=payload,
+    )
+
+    assert response.status_code == 200, response.text
+
+    data = response.json()
+
+    assert data["sleep_hours"] == 7.2
+    assert data["resting_heart_rate"] == 61
+    assert data["hrv"] == 42
+    assert data["steps"] == 8240
+    assert data["body_temperature"] == 36.5
+
+    stored = client.get(
+        "/patients/nancy/wearable",
+        params={"date": "2026-10-06"},
+    )
+
+    assert stored.status_code == 200
+
+    result = stored.json()
+
+    assert result["sleep_hours"] == 7.2
+    assert result["resting_heart_rate"] == 61
+    assert result["hrv"] == 42
+    assert result["steps"] == 8240
+    assert result["body_temperature"] == 36.5

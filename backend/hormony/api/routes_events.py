@@ -4,6 +4,7 @@ import csv
 import io
 import json
 import math
+from datetime import date as Date
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy.orm import Session
@@ -14,12 +15,33 @@ from ..ledger.importer import import_rows
 from ..ledger.profiles import cycle_length_for, today_for
 from ..ledger.store import event_out
 from ..models import Event
-from ..schemas import EventIn, EventOut, SummaryOut, TimelineOut
+from ..schemas import (
+    EventIn,
+    EventOut,
+    SummaryOut,
+    TimelineOut,
+    WearableIn,
+    WearableOut,
+)
 
 router = APIRouter()
 
-TYPES = {"cycle", "lab", "symptom", "sleep", "med"}
-PREFIX = {"cycle": "CYC", "lab": "LAB", "symptom": "SYM", "sleep": "SLP", "med": "MED"}
+TYPES = {
+    "cycle",
+    "lab",
+    "symptom",
+    "sleep",
+    "med",
+    "wearable",
+}
+PREFIX = {
+    "cycle": "CYC",
+    "lab": "LAB",
+    "symptom": "SYM",
+    "sleep": "SLP",
+    "med": "MED",
+    "wearable": "WRB",
+}
 
 
 def _rows(db: Session, pid: str):
@@ -102,3 +124,185 @@ async def import_file(pid: str, file: UploadFile = File(...)):
         raise HTTPException(400, "expected a list of event objects (or {\"events\": [...]})")
     res = import_rows(rows, pid, source=f"Imported {file.filename}", source_ref=file.filename)
     return res.model_dump()
+
+@router.post(
+    "/patients/{pid}/wearable",
+    response_model=WearableOut,
+)
+def create_wearable_data(
+    pid: str,
+    body: WearableIn,
+    db: Session = Depends(get_db),
+):
+    d = body.date or settings.today_date
+
+    if d > settings.today_date:
+        raise HTTPException(
+            400,
+            "date cannot be in the future",
+        )
+
+    if all(
+        value is None
+        for value in (
+            body.sleep_hours,
+            body.resting_heart_rate,
+            body.hrv,
+            body.steps,
+            body.body_temperature,
+        )
+    ):
+        raise HTTPException(
+            400,
+            "at least one wearable metric is required",
+        )
+
+    source = body.source.strip() or "wearable"
+
+    source_ref = (
+        body.source_ref.strip()
+        if body.source_ref
+        else f"{source}:{d.isoformat()}"
+    )
+
+
+    metrics = [
+        (
+            "Sleep duration",
+            body.sleep_hours,
+            "hours",
+            "sleep",
+        ),
+        (
+            "Resting heart rate",
+            body.resting_heart_rate,
+            "bpm",
+            "wearable",
+        ),
+        (
+            "HRV",
+            body.hrv,
+            "ms",
+            "wearable",
+        ),
+        (
+            "Steps",
+            body.steps,
+            "steps",
+            "wearable",
+        ),
+        (
+            "Body temperature",
+            body.body_temperature,
+            "°C",
+            "wearable",
+        ),
+    ]
+
+    for name, value, unit, event_type in metrics:
+        if value is None:
+            continue
+
+        metric_ref = f"{source_ref}:{name.lower().replace(' ', '_')}"
+
+        event_id = f"WRB-{d.strftime('%m%d')}-{name[:3].upper()}"
+
+        existing_id = db.query(Event.id).filter(
+            Event.patient_id == pid,
+            Event.source_ref == metric_ref,
+        ).first()
+
+        if existing_id:
+            continue
+
+        base_id = event_id
+        candidate = base_id
+        counter = 2
+
+        while db.query(Event.id).filter(
+            Event.id == candidate
+        ).first():
+            candidate = f"{base_id}-{counter}"
+            counter += 1
+
+        event = Event(
+            id=candidate,
+            patient_id=pid,
+            date=d,
+            type=event_type,
+            name=name,
+            value=float(value),
+            unit=unit,
+            note="Imported from wearable health data",
+            source=source,
+            source_ref=metric_ref,
+        )
+
+        db.add(event)
+
+    db.commit()
+
+    return WearableOut(
+        date=d,
+        sleep_hours=body.sleep_hours,
+        resting_heart_rate=body.resting_heart_rate,
+        hrv=body.hrv,
+        steps=body.steps,
+        body_temperature=body.body_temperature,
+        source=source,
+    )
+@router.get(
+    "/patients/{pid}/wearable",
+    response_model=WearableOut,
+)
+def get_wearable_data(
+    pid: str,
+    date: Date | None = None,
+    db: Session = Depends(get_db),
+):
+    target_date = date or settings.today_date
+
+    events = (
+        db.query(Event)
+        .filter(
+            Event.patient_id == pid,
+            Event.date == target_date,
+            Event.source.in_([
+                "wearable",
+                "health_connect",
+                "healthkit",
+            ]),
+        )
+        .order_by(Event.id.asc())
+        .all()
+    )
+
+    result = {
+        "date": target_date,
+        "sleep_hours": None,
+        "resting_heart_rate": None,
+        "hrv": None,
+        "steps": None,
+        "body_temperature": None,
+        "source": "wearable",
+    }
+
+    for event in events:
+        if event.name == "Sleep duration":
+            result["sleep_hours"] = event.value
+        elif event.name == "Resting heart rate":
+            result["resting_heart_rate"] = event.value
+        elif event.name == "HRV":
+            result["hrv"] = event.value
+        elif event.name == "Steps":
+            result["steps"] = (
+                int(event.value)
+                if event.value is not None
+                else None
+            )
+        elif event.name == "Body temperature":
+            result["body_temperature"] = event.value
+
+        result["source"] = event.source
+
+    return result

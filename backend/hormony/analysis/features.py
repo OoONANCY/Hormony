@@ -95,10 +95,29 @@ def compute_stats(events: List[EventOut], starts: List[Date], today: Date, windo
     of = lambda kind: [e for e in ev if t(e) == kind]  # noqa: E731
     cd_of = lambda d: cyc.cycle_day(d, starts)  # noqa: E731
     late = lambda cd: cyc.is_late(cd, cycle_length)  # noqa: E731
-    stats: dict = {"window_days": window_days, "window_start": lo.isoformat(), "today": today.isoformat(),
-                   "cycle_length": cycle_length, "late_window": list(cyc.late_window(cycle_length)),
-                   "counts": {k: len(of(k)) for k in ("cycle", "lab", "symptom", "sleep", "med")},
-                   "focus": None, "med": None, "trend": None, "cooccur": [], "labs": None, "sleep": None}
+    stats: dict = {
+    "window_days": window_days,
+    "window_start": lo.isoformat(),
+    "today": today.isoformat(),
+    "counts": {
+        k: len(of(k))
+        for k in (
+            "cycle",
+            "lab",
+            "symptom",
+            "sleep",
+            "med",
+            "wearable",
+        )
+    },
+    "focus": None,
+    "med": None,
+    "trend": None,
+    "cooccur": [],
+    "labs": None,
+    "sleep": None,
+    "wearable": None,
+}
 
     # ---- focus symptom: the most-logged one ----
     syms = of("symptom")
@@ -180,7 +199,42 @@ def compute_stats(events: List[EventOut], starts: List[Date], today: Date, windo
             short = [p for p in prev if p is not None and p.value < SHORT_NIGHT_H]
             s.update(short_before=len(short), short_ids=[p.id for p in short])
         stats["sleep"] = s
+
+    # ---- wearable metrics ----
+    wearable = of("wearable")
+
+    if wearable:
+        latest = {}
+
+        for e in sorted(
+            wearable,
+            key=lambda e: (e.date, e.id),
+            reverse=True,
+        ):
+            key = e.name
+
+            if key not in latest and e.value is not None:
+                latest[key] = {
+                    "value": e.value,
+                    "unit": e.unit or "",
+                    "date": e.date.isoformat(),
+                    "id": e.id,
+                    "source": e.source,
+                }
+
+        stats["wearable"] = {
+            "latest": latest,
+            "n": len(wearable),
+        }
+    else:
+        stats["wearable"] = {
+            "latest": {},
+            "n": 0,
+        }
+
     return stats
+
+
 
 
 def analyze(events: List[EventOut], starts: List[Date], today: Date,
